@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maya Analytics | Presentazione</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 60px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.95;
+        }
+
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.8em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 5px solid #667eea;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .feature-card h4 {
+            color: #667eea;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card p {
+            color: #555;
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+
+        .icon {
+            font-size: 2em;
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .role-card {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .role-card:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .role-card h4 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .role-card:hover h4 {
+            color: white;
+        }
+
+        .role-card ul {
+            list-style: none;
+            text-align: left;
+            margin-top: 15px;
+        }
+
+        .role-card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .role-card:hover li {
+            border-bottom-color: rgba(255,255,255,0.3);
+        }
+
+        .role-card li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .role-card:hover li:before {
+            color: white;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 5px solid #f39c12;
+        }
+
+        .highlight h4 {
+            color: #d35400;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .benefits-list {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .benefits-list li {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+        }
+
+        .benefits-list li:hover {
+            background: #e9ecef;
+            transform: translateX(10px);
+        }
+
+        .benefits-list li:before {
+            content: "🎯 ";
+            margin-right: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            padding: 30px;
+            font-size: 1.2em;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5em;
+            }
+
+            .section {
+                padding: 30px 20px;
+            }
+
+            .features-grid,
+            .roles-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .workflow-diagram {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .workflow-step {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 10px;
+            font-weight: bold;
+        }
+
+        .arrow {
+            display: inline-block;
+            color: #667eea;
+            font-size: 2em;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Maya Analytics</h1>
+            <p>Piattaforma di analisi e reportistica intelligente</p>
+        </div>
+
+        <!-- Cos'è Maya Analytics -->
+        <div class="section">
+            <h2>📋 Cos'è Maya Analytics?</h2>
+            <p style="font-size: 1.2em; line-height: 1.8; color: #555;">
+                Maya Analytics è una piattaforma avanzata per la generazione automatica di report e analisi dati. 
+                Il sistema genera report personalizzati per ogni utente, con insights e analisi dettagliate che 
+                aiutano a prendere decisioni informate basate sui dati.
+            </p>
+            
+            <div class="highlight">
+                <h4>💡 In parole semplici</h4>
+                <p style="font-size: 1.1em;">
+                    Maya Analytics genera automaticamente report personalizzati per ogni utente, secondo una 
+                    pianificazione configurata. I report contengono insights, analisi e statistiche che vengono 
+                    inviate via email o visualizzate nella dashboard. Ogni utente può configurare quando e come 
+                    ricevere i propri report.
+                </p>
+            </div>
+        </div>
+
+        <!-- Sistema di Report -->
+        <div class="section">
+            <h2>📊 Sistema di Report Automatici</h2>
+            
+            <h3>Come Funzionano i Report</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Maya Analytics genera automaticamente report personalizzati per ogni utente. I report vengono 
+                creati secondo una pianificazione configurata e contengono insights, analisi e statistiche 
+                utili per il business.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4><span class="icon">⏰</span> Pianificazione Automatica</h4>
+                    <p>
+                        Ogni utente può configurare quando ricevere i report: giornalieri, settimanali o mensili. 
+                        È possibile specificare anche l'orario esatto di generazione. Il sistema genera automaticamente 
+                        i report secondo la pianificazione impostata.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">📧</span> Invio via Email</h4>
+                    <p>
+                        I report vengono inviati automaticamente all'indirizzo email configurato dall'utente. 
+                        È possibile configurare email diverse per utenti diversi, permettendo di inviare report 
+                        a indirizzi specifici per ogni esigenza.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">📈</span> Insights e Analisi</h4>
+                    <p>
+                        Ogni report contiene insights dettagliati, statistiche, trend e analisi che aiutano 
+                        a comprendere le performance e prendere decisioni informate. I report includono timestamp, 
+                        informazioni sull'utente e sul tenant.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">👁️</span> Visualizzazione Dashboard</h4>
+                    <p>
+                        Oltre all'invio via email, tutti i report generati sono disponibili nella dashboard. 
+                        Gli admin vedono i report del proprio tenant, i superadmin vedono tutti i report del sistema.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">⚙️</span> Configurazione Personalizzata</h4>
+                    <p>
+                        Ogni utente può abilitare o disabilitare i report, modificare la frequenza, cambiare 
+                        l'orario di generazione e aggiornare l'indirizzo email di destinazione. Controllo 
+                        completo sulle proprie impostazioni.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">📋</span> Storico Report</h4>
+                    <p>
+                        Tutti i report generati vengono salvati e sono consultabili in qualsiasi momento. 
+                        È possibile vedere lo storico completo dei report, con data di generazione, contenuti 
+                        e insights per ogni periodo.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Come si Generano i Report -->
+        <div class="section">
+            <h2>🔄 Come si Generano i Report</h2>
+            
+            <h3>1. Configurazione Utente</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Quando viene creato un utente, l'amministratore può configurare:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li><strong>Abilitazione Report:</strong> attiva o disattiva la generazione automatica</li>
+                <li><strong>Frequenza:</strong> giornaliera, settimanale o mensile</li>
+                <li><strong>Orario:</strong> l'ora esatta in cui generare il report (es. 09:00)</li>
+                <li><strong>Email:</strong> indirizzo email dove ricevere i report</li>
+            </ul>
+
+            <h3>2. Generazione Automatica</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Il sistema controlla periodicamente tutti gli utenti con report abilitati. Quando arriva il momento 
+                programmato, genera automaticamente il report per quell'utente, raccogliendo i dati necessari e 
+                creando gli insights.
+            </p>
+
+            <h3>3. Invio e Salvataggio</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Una volta generato, il report viene:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li><strong>Inviato via email</strong> all'indirizzo configurato dall'utente</li>
+                <li><strong>Salvato nel sistema</strong> per la consultazione futura</li>
+                <li><strong>Reso disponibile</strong> nella dashboard per la visualizzazione</li>
+            </ul>
+
+            <h3>4. Consultazione</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Gli admin vedono tutti i report del proprio tenant nella dashboard, i superadmin hanno accesso a tutti 
+                i report del sistema. Ogni report mostra la data di generazione, gli insights e le informazioni rilevanti.
+            </p>
+
+            <div class="workflow-diagram">
+                <div class="workflow-step">Configurazione</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step">Pianificazione</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step">Generazione Automatica</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step">Invio Email</div>
+                <span class="arrow">→</span>
+                <div class="workflow-step">Salvataggio</div>
+            </div>
+        </div>
+
+        <!-- Funzionalità Aggiuntive -->
+        <div class="section">
+            <h2>✨ Funzionalità Aggiuntive</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4><span class="icon">👤</span> Gestione Profili</h4>
+                    <p>
+                        Ogni utente può visualizzare e modificare il proprio profilo: configurazione endpoint 
+                        XML, token, abilitazione report, pianificazione e email. Controllo completo delle 
+                        proprie impostazioni.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">🔗</span> Integrazione XML</h4>
+                    <p>
+                        Ogni utente può configurare il proprio endpoint XML e token di autenticazione per 
+                        integrazioni con sistemi esterni. Comunicazione bidirezionale per lo scambio di dati.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">👥</span> Gestione Utenti</h4>
+                    <p>
+                        Gli amministratori possono creare, modificare ed eliminare utenti nel proprio tenant. 
+                        Configurazione completa di ogni utente con tutte le impostazioni necessarie per i report 
+                        e le integrazioni.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ruoli e Permessi -->
+        <div class="section">
+            <h2>🎭 Ruoli e Permessi</h2>
+            <p style="font-size: 1.2em; margin-bottom: 30px; color: #555;">
+                La piattaforma prevede diversi livelli di accesso, ognuno con responsabilità e permessi specifici:
+            </p>
+
+            <div class="roles-grid">
+                <div class="role-card">
+                    <h4>👑 SuperAdmin</h4>
+                    <p style="margin-bottom: 15px;">Il livello più alto di accesso</p>
+                    <ul>
+                        <li>Gestisce tutti i reseller</li>
+                        <li>Vede tutti i tenant del sistema</li>
+                        <li>Accede a tutti i report</li>
+                        <li>Controllo completo della piattaforma</li>
+                    </ul>
+                </div>
+
+                <div class="role-card">
+                    <h4>🤝 Reseller</h4>
+                    <p style="margin-bottom: 15px;">Gestisce più tenant</p>
+                    <ul>
+                        <li>Crea nuovi tenant</li>
+                        <li>Assegna tenant ai clienti</li>
+                        <li>Visualizza i tenant assegnati</li>
+                        <li>Monitora le attività</li>
+                    </ul>
+                </div>
+
+                <div class="role-card">
+                    <h4>👔 Admin</h4>
+                    <p style="margin-bottom: 15px;">Amministratore del proprio tenant</p>
+                    <ul>
+                        <li>Gestisce gli utenti del tenant</li>
+                        <li>Configura le impostazioni</li>
+                        <li>Visualizza i report del tenant</li>
+                        <li>Controllo completo sul proprio spazio</li>
+                    </ul>
+                </div>
+
+                <div class="role-card">
+                    <h4>👤 User</h4>
+                    <p style="margin-bottom: 15px;">Utente standard</p>
+                    <ul>
+                        <li>Accede al proprio profilo</li>
+                        <li>Visualizza i propri report</li>
+                        <li>Utilizza le funzionalità base</li>
+                        <li>Opera nel proprio tenant</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Architettura Multitenant -->
+        <div class="section">
+            <h2>🏢 Architettura Multitenant</h2>
+            
+            <p style="font-size: 1.2em; line-height: 1.8; color: #555; margin-bottom: 30px;">
+                Maya Analytics utilizza un'architettura multitenant che permette a più organizzazioni (tenant) 
+                di utilizzare la stessa piattaforma mantenendo i dati completamente isolati. Ogni tenant ha 
+                il proprio spazio dedicato con i propri utenti e configurazioni.
+            </p>
+
+            <h3>Cos'è un Tenant?</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Un tenant è un'organizzazione o azienda che utilizza Maya Analytics. Ogni tenant ha:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li>I propri utenti e amministratori</li>
+                <li>I propri report e dati completamente isolati</li>
+                <li>Le proprie configurazioni e impostazioni</li>
+                <li>Un amministratore che gestisce il tenant</li>
+            </ul>
+
+            <h3>Flusso di Creazione Tenant</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                <strong>1. Creazione da SuperAdmin o Reseller:</strong> Un SuperAdmin o un Reseller crea un nuovo 
+                tenant specificando:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li>Nome del tenant (organizzazione)</li>
+                <li>Email dell'amministratore del tenant</li>
+                <li>Nome dell'amministratore</li>
+                <li>Password per l'amministratore</li>
+            </ul>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                <strong>2. Creazione Automatica:</strong> Il sistema crea automaticamente:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li>Il tenant con spazio isolato</li>
+                <li>L'utente amministratore con le credenziali fornite</li>
+                <li>L'account di autenticazione per l'amministratore</li>
+            </ul>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                <strong>3. Primo Accesso:</strong> L'amministratore può accedere immediatamente e iniziare a:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li>Creare utenti nel proprio tenant</li>
+                <li>Configurare report per gli utenti</li>
+                <li>Gestire le impostazioni del tenant</li>
+            </ul>
+
+            <h3>Cos'è un Reseller?</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Un Reseller è un utente che può gestire più tenant. I Reseller possono:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li><strong>Creare nuovi tenant</strong> per i propri clienti</li>
+                <li><strong>Assegnare tenant</strong> - quando un SuperAdmin crea un tenant, può assegnarlo a un Reseller</li>
+                <li><strong>Visualizzare i tenant assegnati</strong> - vedere tutti i tenant di cui sono responsabili</li>
+                <li><strong>Rimuovere assegnazioni</strong> - rimuovere un tenant dalla propria gestione</li>
+                <li><strong>Monitorare le attività</strong> - vedere i report e le attività dei tenant assegnati</li>
+            </ul>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                Questo modello permette a un'azienda di avere una rete di partner (reseller) che gestiscono 
+                i propri clienti (tenant) in modo autonomo, mentre il SuperAdmin mantiene il controllo complessivo.
+            </p>
+
+            <h3>Gerarchia e Permessi</h3>
+            <p style="font-size: 1.1em; color: #555; margin-bottom: 20px;">
+                La piattaforma ha una struttura gerarchica:
+            </p>
+            <ul style="margin-left: 30px; margin-bottom: 20px; font-size: 1.1em; color: #555;">
+                <li><strong>SuperAdmin:</strong> controlla tutto il sistema, crea reseller e tenant, vede tutti i report</li>
+                <li><strong>Reseller:</strong> crea e gestisce tenant assegnati, vede i report dei propri tenant</li>
+                <li><strong>Admin:</strong> gestisce il proprio tenant, crea utenti, vede i report del tenant</li>
+                <li><strong>User:</strong> vede solo i propri report e può modificare il proprio profilo</li>
+            </ul>
+        </div>
+
+        <!-- Vantaggi -->
+        <div class="section">
+            <h2>🌟 Vantaggi Principali</h2>
+            
+            <ul class="benefits-list">
+                <li>
+                    <strong>Report Automatici:</strong> I report vengono generati automaticamente secondo la pianificazione 
+                    configurata. Non serve ricordarsi di generarli manualmente - il sistema fa tutto in modo automatico.
+                </li>
+                <li>
+                    <strong>Personalizzazione Completa:</strong> Ogni utente può configurare quando ricevere i report 
+                    (giornalieri, settimanali, mensili), a che ora e a quale indirizzo email. Massima flessibilità.
+                </li>
+                <li>
+                    <strong>Insights Dettagliati:</strong> Ogni report contiene analisi approfondite, statistiche e insights 
+                    che aiutano a comprendere le performance e prendere decisioni informate basate sui dati.
+                </li>
+                <li>
+                    <strong>Storico Completo:</strong> Tutti i report generati vengono salvati e sono consultabili in qualsiasi 
+                    momento. Possibilità di vedere l'evoluzione nel tempo e confrontare periodi diversi.
+                </li>
+                <li>
+                    <strong>Multi-Livello di Visibilità:</strong> Gli utenti vedono i propri report, gli admin vedono tutti i 
+                    report del tenant, i superadmin vedono tutto il sistema. Controllo granulare dell'accesso.
+                </li>
+                <li>
+                    <strong>Integrazione XML:</strong> Possibilità di integrare con sistemi esterni tramite endpoint XML 
+                    personalizzati, permettendo lo scambio di dati e l'integrazione con altre piattaforme.
+                </li>
+                <li>
+                    <strong>Architettura Multitenant:</strong> Piattaforma che supporta più organizzazioni mantenendo i dati 
+                    completamente isolati. Ogni tenant opera in modo indipendente con i propri utenti e configurazioni.
+                </li>
+                <li>
+                    <strong>Facilità d'Uso:</strong> Interfaccia intuitiva per configurare report, gestire utenti e visualizzare 
+                    i risultati. Operazioni complesse rese semplici e accessibili a tutti.
+                </li>
+            </ul>
+        </div>
+
+        <!-- Casi d'Uso -->
+        <div class="section">
+            <h2>💼 Casi d'Uso</h2>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4><span class="icon">📞</span> Centrali Telefoniche</h4>
+                    <p>
+                        Per aziende che gestiscono centrali telefoniche e call center. Ogni cliente può avere 
+                        il proprio tenant con utenti che ricevono report automatici giornalieri o settimanali 
+                        sulle chiamate, performance e statistiche. Integrazione XML con sistemi di telefonia.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">📊</span> Business Intelligence</h4>
+                    <p>
+                        Per organizzazioni che necessitano di report automatici e analisi dati regolari. 
+                        Ogni utente riceve report personalizzati con insights e statistiche. I manager 
+                        ricevono report settimanali, gli analisti report giornalieri con dettagli approfonditi.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">🤝</span> Rete di Reseller</h4>
+                    <p>
+                        Aziende con una rete di reseller possono assegnare tenant ai propri partner. Ogni reseller 
+                        gestisce i propri clienti, crea utenti e configura report. I clienti ricevono report 
+                        automatici mentre il reseller monitora le attività di tutti i propri tenant.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">🔗</span> Integrazione Multi-Sistema</h4>
+                    <p>
+                        Per aziende che devono integrare più sistemi diversi. Ogni utente configura il proprio 
+                        endpoint XML per comunicare con sistemi specifici. I report automatici forniscono 
+                        monitoraggio continuo delle integrazioni e delle performance.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">🏢</span> Gruppi Aziendali</h4>
+                    <p>
+                        Gruppi con più filiali o divisioni possono creare un tenant per ciascuna. Ogni divisione 
+                        gestisce i propri utenti e riceve report personalizzati, mentre il management centrale 
+                        ha visibilità aggregata su tutte le divisioni tramite i superadmin.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <h4><span class="icon">📈</span> Monitoraggio Performance</h4>
+                    <p>
+                        Per team che necessitano di monitoraggio continuo delle performance. Report automatici 
+                        giornalieri per gli operatori, settimanali per i manager, mensili per il management. 
+                        Ogni livello riceve insights appropriati al proprio ruolo.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>✨ Maya Analytics ✨</p>
+            <p style="margin-top: 15px; opacity: 0.9;">
+                Report automatici, insights intelligenti, analisi dettagliate
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

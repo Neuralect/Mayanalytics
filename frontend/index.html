@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maya - Analytics Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Login Page */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            box-shadow: 0 10px 25px rgba(149, 165, 166, 0.4);
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.4);
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .dashboard-header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .dashboard-header h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        /* Messages */
+        .error-message, .success-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .user-info {
+                flex-direction: column;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .table {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>🤖 Maya</h1>
+                <p>Analytics Assistant per Setera Centralino</p>
+            </div>
+            
+            <div id="loginError" class="error-message hidden"></div>
+            
+            <!-- Login Form -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn">Accedi</button>
+            </form>
+
+            <!-- Change Password Form -->
+            <form id="changePasswordForm" class="hidden">
+                <div class="form-group">
+                    <label>Nuova Password</label>
+                    <input type="password" id="newPassword" required minlength="8">
+                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">
+                        Minimo 8 caratteri, almeno una maiuscola e un numero
+                    </small>
+                </div>
+                <button type="submit" class="btn">Cambia Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboardPage" class="dashboard">
+        <div class="container">
+            <div class="dashboard-header">
+                <h2>Maya Analytics</h2>
+                <div class="user-info">
+                    <div>
+                        <div style="font-weight: 600; color: #2c3e50;" id="dashboardUserName">User</div>
+                        <div style="font-size: 0.85rem; color: #7f8c8d;" id="dashboardUserEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="790c0a1c0b391c01181409151c571a1614">[email&#160;protected]</a></div>
+                    </div>
+                    <span class="badge badge-success" id="userRoleBadge">USER</span>
+                    <button id="logoutBtn" class="btn btn-small btn-danger">Logout</button>
+                </div>
+            </div>
+
+            <!-- SuperAdmin Section -->
+            <div id="superadminSection" class="hidden">
+                <div class="card">
+                    <h3>Gestione Reseller</h3>
+                    <button id="createResellerBtn" class="btn" style="width: auto; margin-bottom: 20px;">+ Crea Nuovo Reseller</button>
+                    <div id="resellersLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento reseller...</p>
+                    </div>
+                    <table class="table" id="resellersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Tenant Assegnati</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h3>Gestione Tenant</h3>
+                    <button id="createTenantBtn" class="btn" style="width: auto; margin-bottom: 20px;">+ Crea Nuovo Tenant</button>
+                    <div id="tenantsLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento tenant...</p>
+                    </div>
+                    <table class="table" id="tenantsTable">
+                        <thead>
+                            <tr>
+                                <th>Nome Tenant</th>
+                                <th>Admin Email</th>
+                                <th>Stato</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h3>Report Generati (Tutti i Tenant)</h3>
+                    <div id="allReportsLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento report...</p>
+                    </div>
+                    <table class="table" id="allReportsTable">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Utente</th>
+                                <th>Tenant</th>
+                                <th>Insights</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Admin Section -->
+            <div id="adminSection" class="hidden">
+                <div class="card">
+                    <h3>Gestione Utenti</h3>
+                    <button id="createUserBtn" class="btn" style="width: auto; margin-bottom: 20px;">+ Crea Nuovo Utente</button>
+                    <div id="usersLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento utenti...</p>
+                    </div>
+                    <table class="table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Report Attivi</th>
+                                <th>Periodicità</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h3>Report del Tenant</h3>
+                    <div id="tenantReportsLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento report...</p>
+                    </div>
+                    <table class="table" id="tenantReportsTable">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Utente</th>
+                                <th>Insights</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- User Section -->
+            <div id="userSection" class="hidden">
+                <div class="card">
+                    <h3>Il Mio Profilo</h3>
+                    <div id="profileMessage" class="success-message hidden"></div>
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="profileName" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profileEmail" disabled>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>XML Endpoint URL</label>
+                            <input type="url" id="profileXmlEndpoint" placeholder="https://api.example.com/data">
+                        </div>
+
+                        <div class="form-group">
+                            <label>XML Token (Opzionale)</label>
+                            <input type="text" id="profileXmlToken" placeholder="Bearer token o auth key">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="profileReportsEnabled" style="width: auto; margin-right: 8px;">
+                                Abilita Report Automatici
+                            </label>
+                        </div>
+                        
+                        <div class="form-group" id="reportScheduleGroup">
+                            <label>Periodicità Report</label>
+                            <select id="profileReportFrequency">
+                                <option value="daily">Giornaliero</option>
+                                <option value="weekly">Settimanale</option>
+                                <option value="monthly">Mensile</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="reportTimeGroup">
+                            <label>Ora Invio Report</label>
+                            <input type="time" id="profileReportTime" value="09:00">
+                        </div>
+                        
+                        <div class="form-group hidden" id="weeklyDayGroup">
+                            <label>Giorno della Settimana</label>
+                            <select id="profileWeeklyDay">
+                                <option value="1">Lunedì</option>
+                                <option value="2">Martedì</option>
+                                <option value="3">Mercoledì</option>
+                                <option value="4">Giovedì</option>
+                                <option value="5">Venerdì</option>
+                                <option value="6">Sabato</option>
+                                <option value="0">Domenica</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group hidden" id="monthlyDayGroup">
+                            <label>Giorno del Mese</label>
+                            <select id="profileMonthlyDay">
+                                <!-- Options 1-28 for compatibility -->
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn">Aggiorna Profilo</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>I Miei Report</h3>
+                    <div id="userReportsLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento report...</p>
+                    </div>
+                    <table class="table" id="userReportsTable">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Stato</th>
+                                <th>Insights</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Tenant Modal -->
+    <div id="createTenantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crea Nuovo Tenant</h3>
+            </div>
+            <div id="tenantError" class="error-message hidden"></div>
+            <form id="createTenantForm">
+                <div class="form-group">
+                    <label>Nome Tenant</label>
+                    <input type="text" id="tenantName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Admin</label>
+                    <input type="email" id="tenantAdminEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome Admin</label>
+                    <input type="text" id="tenantAdminName" required>
+                </div>
+                <div class="form-group">
+                    <label>Password Temporanea</label>
+                    <input type="password" id="tenantAdminPassword" required minlength="8">
+                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">
+                        Minimo 8 caratteri, almeno una maiuscola e un numero
+                    </small>
+                </div>
+                <button type="submit" class="btn">Crea Tenant</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('createTenantModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crea Nuovo Utente</h3>
+            </div>
+            <div id="userError" class="error-message hidden"></div>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="userName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="userEmail" required>
+                    <small style="color: #7f8c8d;">Email per login (deve essere univoca)</small>
+                </div>
+                <div class="form-group">
+                    <label>Email per Report (Opzionale)</label>
+                    <input type="email" id="userReportEmail" placeholder="report@example.com">
+                    <small style="color: #7f8c8d;">Se vuoto, usa l'email principale. Può essere duplicata tra più utenti.</small>
+                </div>
+                <div class="form-group">
+                    <label>XML Endpoint URL</label>
+                    <input type="url" id="userXmlEndpoint" placeholder="https://api.example.com/data" required>
+                </div>
+                <div class="form-group">
+                    <label>XML Token (Opzionale)</label>
+                    <input type="text" id="userXmlToken" placeholder="Bearer token o auth key">
+                </div>
+                <div class="form-group">
+                    <label>Periodicità Report</label>
+                    <select id="userReportFrequency" required>
+                        <option value="daily">Giornaliero</option>
+                        <option value="weekly">Settimanale</option>
+                        <option value="monthly">Mensile</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ora Invio Report</label>
+                    <input type="time" id="userReportTime" value="09:00" required>
+                </div>
+                <div class="form-group hidden" id="userWeeklyDayGroup">
+                    <label>Giorno della Settimana</label>
+                    <select id="userWeeklyDay">
+                        <option value="1">Lunedì</option>
+                        <option value="2">Martedì</option>
+                        <option value="3">Mercoledì</option>
+                        <option value="4">Giovedì</option>
+                        <option value="5">Venerdì</option>
+                        <option value="6">Sabato</option>
+                        <option value="0">Domenica</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="userMonthlyDayGroup">
+                    <label>Giorno del Mese</label>
+                    <select id="userMonthlyDay">
+                        <!-- Options 1-28 -->
+                    </select>
+                </div>
+                <button type="submit" class="btn">Crea Utente</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('createUserModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Reseller Modal -->
+    <div id="createResellerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crea Nuovo Reseller</h3>
+            </div>
+            <div id="resellerError" class="error-message hidden"></div>
+            <form id="createResellerForm">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="resellerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="resellerEmail" required>
+                    <small style="color: #7f8c8d;">Email per login (deve essere univoca)</small>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="resellerPassword" required minlength="8">
+                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">
+                        Minimo 8 caratteri, almeno una maiuscola e un numero
+                    </small>
+                </div>
+                <button type="submit" class="btn">Crea Reseller</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('createResellerModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Tenant to Reseller Modal -->
+    <div id="assignTenantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Assegna Tenant a Reseller</h3>
+            </div>
+            <div id="assignTenantError" class="error-message hidden"></div>
+            <form id="assignTenantForm">
+                <input type="hidden" id="assignResellerId">
+                <div class="form-group">
+                    <label>Reseller</label>
+                    <input type="text" id="assignResellerName" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Seleziona Tenant</label>
+                    <select id="assignTenantId" required>
+                        <option value="">-- Seleziona un tenant --</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Assegna Tenant</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('assignTenantModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Reseller Tenants Modal -->
+    <div id="viewResellerTenantsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tenant Assegnati al Reseller</h3>
+            </div>
+            <div id="resellerTenantsError" class="error-message hidden"></div>
+            <input type="hidden" id="viewResellerId">
+            <div id="resellerTenantsLoading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Caricamento tenant...</p>
+            </div>
+            <table class="table" id="resellerTenantsTable" style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th>Nome Tenant</th>
+                        <th>Admin Email</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('viewResellerTenantsModal')" style="margin-top: 20px;">Chiudi</button>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Modifica Utente</h3>
+            </div>
+            <div id="editUserError" class="error-message hidden"></div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="editUserName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="editUserEmail" disabled>
+                    <small style="color: #7f8c8d;">Email non modificabile (usata per login)</small>
+                </div>
+                <div class="form-group">
+                    <label>Email per Report (Opzionale)</label>
+                    <input type="email" id="editUserReportEmail" placeholder="report@example.com">
+                    <small style="color: #7f8c8d;">Se vuoto, usa l'email principale. Può essere duplicata tra più utenti.</small>
+                </div>
+                <div class="form-group">
+                    <label>XML Endpoint URL</label>
+                    <input type="url" id="editUserXmlEndpoint" placeholder="https://api.example.com/data" required>
+                </div>
+                <div class="form-group">
+                    <label>XML Token (Opzionale)</label>
+                    <input type="text" id="editUserXmlToken" placeholder="Bearer token o auth key">
+                </div>
+                <div class="form-group">
+                    <label>Abilita Report</label>
+                    <input type="checkbox" id="editUserReportEnabled">
+                </div>
+                <div class="form-group">
+                    <label>Periodicità Report</label>
+                    <select id="editUserReportFrequency" required>
+                        <option value="daily">Giornaliero</option>
+                        <option value="weekly">Settimanale</option>
+                        <option value="monthly">Mensile</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ora Invio Report</label>
+                    <input type="time" id="editUserReportTime" value="09:00" required>
+                </div>
+                <div class="form-group hidden" id="editUserWeeklyDayGroup">
+                    <label>Giorno della Settimana</label>
+                    <select id="editUserWeeklyDay">
+                        <option value="1">Lunedì</option>
+                        <option value="2">Martedì</option>
+                        <option value="3">Mercoledì</option>
+                        <option value="4">Giovedì</option>
+                        <option value="5">Venerdì</option>
+                        <option value="6">Sabato</option>
+                        <option value="0">Domenica</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="editUserMonthlyDayGroup">
+                    <label>Giorno del Mese</label>
+                    <select id="editUserMonthlyDay">
+                        <!-- Options 1-28 -->
+                    </select>
+                </div>
+                <button type="submit" class="btn">Salva Modifiche</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <script>
+        // ========================================
+        // CONFIGURAZIONE CORRETTA - AGGIORNATA
+        // ========================================
+        
+        // IMPORTANTE: Questi valori devono corrispondere al tuo deployment attuale
+        // Dal template.yaml e stack "maya-analytics-meridix"
+        
+        const API_BASE_URL = 'https://58mpqfwj34.execute-api.eu-central-1.amazonaws.com/Prod';
+        const COGNITO_USER_POOL_ID = 'eu-central-1_axvljML1p';  // Dal template.yaml
+        const COGNITO_CLIENT_ID = '7kldhiejpdctothvt82vkdgn3';  // Dal template.yaml
+        const COGNITO_REGION = 'eu-central-1';
+
+        // ========================================
+        // COME OTTENERE L'API_BASE_URL CORRETTA:
+        // ========================================
+        // 1. Esegui: aws cloudformation describe-stacks --stack-name maya-analytics-meridix --region eu-central-1 --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text
+        // 2. Oppure vai nella console AWS CloudFormation > maya-analytics-meridix > Outputs
+        // 3. Sostituisci YOUR_API_ID nell'URL sopra con l'ID reale
+        
+        console.log('🔧 Configurazione Maya Analytics:');
+        console.log('📍 API URL:', API_BASE_URL);
+        console.log('👤 User Pool ID:', COGNITO_USER_POOL_ID);
+        console.log('🔑 Client ID:', COGNITO_CLIENT_ID);
+        console.log('🌍 Region:', COGNITO_REGION);
+
+        // Cognito setup
+        const poolData = {
+            UserPoolId: COGNITO_USER_POOL_ID,
+            ClientId: COGNITO_CLIENT_ID
+        };
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+        // Global state
+        let currentUser = null;
+        let jwtToken = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inizializzazione Maya Analytics...');
+            initializeApp();
+            setupEventListeners();
+            populateMonthlyDays();
+            setupScheduleToggle();
+        });
+
+        function initializeApp() {
+            checkAuthState();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('changePasswordForm').addEventListener('submit', handlePasswordChange);
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            document.getElementById('createResellerBtn')?.addEventListener('click', () => openModal('createResellerModal'));
+            document.getElementById('createTenantBtn')?.addEventListener('click', () => openModal('createTenantModal'));
+            document.getElementById('createUserBtn')?.addEventListener('click', () => openModal('createUserModal'));
+            document.getElementById('createResellerForm').addEventListener('submit', handleCreateReseller);
+            document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
+            document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
+            document.getElementById('editUserForm').addEventListener('submit', handleEditUser);
+            document.getElementById('profileForm').addEventListener('submit', handleUpdateProfile);
+            document.getElementById('assignTenantForm').addEventListener('submit', handleAssignTenant);
+        }
+
+        function populateMonthlyDays() {
+            const selectors = ['profileMonthlyDay', 'userMonthlyDay', 'editUserMonthlyDay'];
+            selectors.forEach(id => {
+                const select = document.getElementById(id);
+                if (select && select.children.length === 0) {
+                    for (let i = 1; i <= 28; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = i;
+                        select.appendChild(option);
+                    }
+                }
+            });
+        }
+
+        function setupScheduleToggle() {
+            const frequencySelectors = [
+                { id: 'profileReportFrequency', prefix: 'profile' },
+                { id: 'userReportFrequency', prefix: 'user' },
+                { id: 'editUserReportFrequency', prefix: 'editUser' }
+            ];
+            
+            frequencySelectors.forEach(({ id, prefix }) => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.addEventListener('change', function() {
+                        toggleScheduleFields(this.value, prefix);
+                    });
+                }
+            });
+        }
+
+        function toggleScheduleFields(frequency, prefix) {
+            const weeklyGroup = document.getElementById(prefix + 'WeeklyDayGroup');
+            const monthlyGroup = document.getElementById(prefix + 'MonthlyDayGroup');
+            
+            if (weeklyGroup) weeklyGroup.classList.toggle('hidden', frequency !== 'weekly');
+            if (monthlyGroup) monthlyGroup.classList.toggle('hidden', frequency !== 'monthly');
+        }
+
+        function checkAuthState() {
+            const cognitoUser = userPool.getCurrentUser();
+            
+            if (cognitoUser) {
+                cognitoUser.getSession((err, session) => {
+                    if (err) {
+                        console.error('❌ Errore sessione:', err);
+                        showLoginPage();
+                        return;
+                    }
+                    
+                    if (session.isValid()) {
+                        console.log('✅ Sessione valida trovata');
+                        jwtToken = session.getIdToken().getJwtToken(); // Usa IdToken invece di AccessToken
+                        loadUserProfile().then(() => {
+                            showDashboard();
+                        }).catch(err => {
+                            console.error('❌ Errore caricamento profilo:', err);
+                            showLoginPage();
+                        });
+                    } else {
+                        console.log('❌ Sessione non valida');
+                        showLoginPage();
+                    }
+                });
+            } else {
+                console.log('❌ Nessun utente autenticato');
+                showLoginPage();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Accesso in corso...';
+                hideError('loginError');
+                
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                console.log('🔐 Tentativo di login per:', email);
+                
+                const authData = {
+                    Username: email,
+                    Password: password
+                };
+                
+                const authDetails = new AmazonCognitoIdentity.AuthenticationDetails(authData);
+                const userData = { Username: email, Pool: userPool };
+                const cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+                
+                await new Promise((resolve, reject) => {
+                    cognitoUser.authenticateUser(authDetails, {
+                        onSuccess: (session) => {
+                            console.log('✅ Autenticazione riuscita');
+                            jwtToken = session.getIdToken().getJwtToken(); // Usa IdToken
+                            resolve(session);
+                        },
+                        onFailure: (error) => {
+                            console.error('❌ Errore autenticazione:', error);
+                            reject(error);
+                        },
+                        newPasswordRequired: (userAttributes, requiredAttributes) => {
+                            console.log('🔄 Richiesto cambio password');
+                            currentUser = cognitoUser;
+                            showChangePasswordForm();
+                            resolve();
+                        }
+                    });
+                });
+                
+                // If not redirected to password change, proceed to dashboard
+                if (document.getElementById('changePasswordForm').classList.contains('hidden')) {
+                    try {
+                        await loadUserProfile();
+                        showDashboard();
+                    } catch (profileError) {
+                        console.error('❌ Errore caricamento profilo dopo login:', profileError);
+                        showError('loginError', 'Errore nel caricamento del profilo utente');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore login:', error);
+                let errorMessage = 'Errore durante l\'accesso';
+                
+                if (error.code === 'NotAuthorizedException') {
+                    errorMessage = 'Email o password non corretti';
+                } else if (error.code === 'UserNotFoundException') {
+                    errorMessage = 'Utente non trovato';
+                } else if (error.code === 'UserNotConfirmedException') {
+                    errorMessage = 'Account non confermato';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showError('loginError', errorMessage);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function handlePasswordChange(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Cambio password...';
+                hideError('loginError');
+                
+                const newPassword = document.getElementById('newPassword').value;
+                
+                console.log('🔄 Cambio password in corso...');
+                
+                await new Promise((resolve, reject) => {
+                    currentUser.completeNewPasswordChallenge(newPassword, {}, {
+                        onSuccess: (session) => {
+                            console.log('✅ Password cambiata con successo');
+                            jwtToken = session.getIdToken().getJwtToken();
+                            resolve(session);
+                        },
+                        onFailure: reject
+                    });
+                });
+                
+                hideChangePasswordForm();
+                await loadUserProfile();
+                showDashboard();
+                
+            } catch (error) {
+                console.error('❌ Errore cambio password:', error);
+                showError('loginError', error.message || 'Errore durante il cambio password');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function handleLogout() {
+            console.log('🚪 Logout utente');
+            const cognitoUser = userPool.getCurrentUser();
+            if (cognitoUser) {
+                cognitoUser.signOut();
+            }
+            currentUser = null;
+            jwtToken = null;
+            showLoginPage();
+        }
+
+        async function loadUserProfile() {
+            try {
+                console.log('👤 Caricamento profilo utente...');
+                
+                if (!jwtToken) {
+                    throw new Error('No authentication token available');
+                }
+                
+                const response = await apiCall('/profile');
+                console.log('✅ Risposta profilo API:', response);
+                
+                if (!response || !response.user) {
+                    throw new Error('Invalid profile response from API');
+                }
+                
+                currentUser = response.user;
+                
+                // Update UI
+                const userNameElement = document.getElementById('dashboardUserName');
+                const userEmailElement = document.getElementById('dashboardUserEmail');
+                const roleBadgeElement = document.getElementById('userRoleBadge');
+                
+                if (userNameElement) userNameElement.textContent = currentUser.name || 'User';
+                if (userEmailElement) userEmailElement.textContent = currentUser.email;
+                
+                if (roleBadgeElement) {
+                    roleBadgeElement.textContent = currentUser.role || 'USER';
+                    roleBadgeElement.className = `badge badge-${getRoleBadgeClass(currentUser.role)}`;
+                }
+                
+                // Show appropriate section
+                const sections = ['superadminSection', 'adminSection', 'userSection'];
+                sections.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) element.classList.add('hidden');
+                });
+                
+                console.log('🎭 Ruolo utente:', currentUser.role);
+                
+                if (currentUser.role === 'SuperAdmin') {
+                    const superAdminSection = document.getElementById('superadminSection');
+                    if (superAdminSection) {
+                        superAdminSection.classList.remove('hidden');
+                        await loadResellers();
+                        await loadTenants();
+                        await loadAllReports();
+                    }
+                } else if (currentUser.role === 'Reseller') {
+                    // Reseller sees same view as SuperAdmin but filtered
+                    const superAdminSection = document.getElementById('superadminSection');
+                    if (superAdminSection) {
+                        superAdminSection.classList.remove('hidden');
+                        await loadTenants(); // Will be filtered by backend
+                        await loadAllReports();
+                    }
+                } else if (currentUser.role === 'Admin') {
+                    const adminSection = document.getElementById('adminSection');
+                    if (adminSection) {
+                        adminSection.classList.remove('hidden');
+                        await loadUsers();
+                        await loadTenantReports();
+                    }
+                } else {
+                    const userSection = document.getElementById('userSection');
+                    if (userSection) {
+                        userSection.classList.remove('hidden');
+                        loadProfileForm();
+                        await loadUserReports();
+                    }
+                }
+                
+                console.log('✅ Profilo utente caricato:', currentUser);
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento profilo:', error);
+                throw error;
+            }
+        }
+
+        function getRoleBadgeClass(role) {
+            switch (role) {
+                case 'SuperAdmin': return 'danger';
+                case 'Reseller': return 'info';
+                case 'Admin': return 'warning';
+                default: return 'info';
+            }
+        }
+
+        function loadProfileForm() {
+            if (!currentUser) return;
+            
+            document.getElementById('profileName').value = currentUser.name || '';
+            document.getElementById('profileEmail').value = currentUser.email || '';
+            document.getElementById('profileXmlEndpoint').value = currentUser.xml_endpoint || '';
+            document.getElementById('profileXmlToken').value = currentUser.xml_token || '';
+            document.getElementById('profileReportsEnabled').checked = currentUser.report_enabled || false;
+            
+            const schedule = parseReportScheduleObject(currentUser.report_schedule);
+            if (schedule) {
+                document.getElementById('profileReportFrequency').value = schedule.frequency;
+                document.getElementById('profileReportTime').value = schedule.time;
+                if (schedule.day_of_week) {
+                    document.getElementById('profileWeeklyDay').value = schedule.day_of_week;
+                }
+                if (schedule.day_of_month) {
+                    document.getElementById('profileMonthlyDay').value = schedule.day_of_month;
+                }
+                toggleScheduleFields(schedule.frequency, 'profile');
+            }
+        }
+
+        /**
+         * Convert local time to UTC time for storage
+         * @param {string} localTime - Time in format "HH:MM" (local time)
+         * @returns {string} - Time in format "HH:MM" (UTC time)
+         */
+        function convertLocalTimeToUTC(localTime) {
+            if (!localTime) return '09:00';
+            
+            try {
+                const [hours, minutes] = localTime.split(':').map(Number);
+                
+                // Create a date object for today at the local time
+                const localDate = new Date();
+                localDate.setHours(hours, minutes, 0, 0);
+                
+                // Get UTC time
+                const utcHours = localDate.getUTCHours();
+                const utcMinutes = localDate.getUTCMinutes();
+                
+                // Format as HH:MM
+                return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
+            } catch (error) {
+                console.error('Error converting local time to UTC:', error);
+                return localTime; // Fallback to original time
+            }
+        }
+
+        /**
+         * Convert UTC time to local time for display
+         * @param {string} utcTime - Time in format "HH:MM" (UTC time)
+         * @returns {string} - Time in format "HH:MM" (local time)
+         */
+        function convertUTCToLocalTime(utcTime) {
+            if (!utcTime) return '09:00';
+            
+            try {
+                const [hours, minutes] = utcTime.split(':').map(Number);
+                
+                // Create a date object for today at UTC time
+                const utcDate = new Date(Date.UTC(new Date().getFullYear(), 
+                                                 new Date().getMonth(), 
+                                                 new Date().getDate(), 
+                                                 hours, minutes, 0));
+                
+                // Get local time
+                const localHours = utcDate.getHours();
+                const localMinutes = utcDate.getMinutes();
+                
+                // Format as HH:MM
+                return `${String(localHours).padStart(2, '0')}:${String(localMinutes).padStart(2, '0')}`;
+            } catch (error) {
+                console.error('Error converting UTC to local time:', error);
+                return utcTime; // Fallback to original time
+            }
+        }
+
+        function parseReportScheduleObject(scheduleStr) {
+            if (!scheduleStr || scheduleStr === 'N/A') return null;
+            
+            try {
+                if (typeof scheduleStr === 'object') return scheduleStr;
+                const schedule = JSON.parse(scheduleStr);
+                
+                // Convert UTC time to local time for display
+                if (schedule.time) {
+                    schedule.time = convertUTCToLocalTime(schedule.time);
+                }
+                
+                return schedule;
+            } catch {
+                // Fallback for legacy format
+                return {
+                    frequency: scheduleStr || 'daily',
+                    time: '09:00'
+                };
+            }
+        }
+
+        function parseReportSchedule(scheduleStr) {
+            if (!scheduleStr || scheduleStr === 'N/A') return 'N/A';
+            
+            try {
+                const schedule = typeof scheduleStr === 'object' ? scheduleStr : JSON.parse(scheduleStr);
+                
+                // Convert UTC time to local time for display
+                const displayTime = schedule.time ? convertUTCToLocalTime(schedule.time) : '09:00';
+                
+                let result = '';
+                
+                switch (schedule.frequency) {
+                    case 'daily':
+                        result = `Giornaliero alle ${displayTime}`;
+                        break;
+                    case 'weekly':
+                        const days = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+                        result = `Settimanale - ${days[schedule.day_of_week] || 'Lun'} alle ${displayTime}`;
+                        break;
+                    case 'monthly':
+                        result = `Mensile - giorno ${schedule.day_of_month || '1'} alle ${displayTime}`;
+                        break;
+                    default:
+                        result = scheduleStr;
+                }
+                
+                return result;
+            } catch {
+                return scheduleStr || 'N/A';
+            }
+        }
+
+        async function handleUpdateProfile(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Aggiornamento...';
+                hideMessage('profileMessage');
+                
+                const frequency = document.getElementById('profileReportFrequency').value;
+                const localTime = document.getElementById('profileReportTime').value;
+                
+                // Convert local time to UTC before saving
+                const utcTime = convertLocalTimeToUTC(localTime);
+                
+                const schedule = {
+                    frequency: frequency,
+                    time: utcTime
+                };
+                
+                if (frequency === 'weekly') {
+                    schedule.day_of_week = document.getElementById('profileWeeklyDay').value;
+                } else if (frequency === 'monthly') {
+                    schedule.day_of_month = document.getElementById('profileMonthlyDay').value;
+                }
+                
+                const body = {
+                    name: document.getElementById('profileName').value,
+                    xml_endpoint: document.getElementById('profileXmlEndpoint').value,
+                    xml_token: document.getElementById('profileXmlToken').value,
+                    report_enabled: document.getElementById('profileReportsEnabled').checked,
+                    report_schedule: JSON.stringify(schedule)
+                };
+                
+                await apiCall('/profile', {
+                    method: 'PUT',
+                    body: JSON.stringify(body)
+                });
+                
+                showMessage('profileMessage', 'Profilo aggiornato con successo!');
+                await loadUserProfile();
+                
+            } catch (error) {
+                console.error('❌ Errore aggiornamento profilo:', error);
+                showMessage('profileMessage', error.message || 'Errore durante l\'aggiornamento', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function loadResellers() {
+            const loading = document.getElementById('resellersLoading');
+            const table = document.getElementById('resellersTable');
+            const tbody = table.querySelector('tbody');
+            
+            try {
+                console.log('👥 Caricamento reseller...');
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                
+                const response = await apiCall('/resellers');
+                const resellers = response.resellers || [];
+                
+                console.log('✅ Reseller caricati:', resellers.length);
+                
+                resellers.forEach(reseller => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${reseller.name || 'N/A'}</td>
+                        <td>${reseller.email}</td>
+                        <td><span class="badge badge-info">${reseller.assigned_tenants_count || 0} tenant</span></td>
+                        <td>
+                            <button class="btn btn-small" onclick="viewResellerTenants('${reseller.user_id}', '${reseller.name || reseller.email}')" style="margin-right: 5px;">Vedi Tenant</button>
+                            <button class="btn btn-small" onclick="assignTenantToReseller('${reseller.user_id}', '${reseller.name || reseller.email}')">Assegna Tenant</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (resellers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #7f8c8d;">Nessun reseller trovato</td></tr>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento reseller:', error);
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #dc3545;">Errore: ${error.message}</td></tr>`;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function loadTenants() {
+            const loading = document.getElementById('tenantsLoading');
+            const table = document.getElementById('tenantsTable');
+            const tbody = table.querySelector('tbody');
+            
+            try {
+                console.log('📋 Caricamento tenants...');
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                
+                const response = await apiCall('/tenants');
+                const tenants = response.tenants || [];
+                
+                console.log('✅ Tenants caricati:', tenants.length);
+                
+                tenants.forEach(tenant => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tenant.name}</td>
+                        <td>${tenant.admin_email}</td>
+                        <td><span class="badge badge-success">Attivo</span></td>
+                        <td>
+                            <button class="btn btn-small btn-danger" onclick="deleteTenant('${tenant.tenant_id}')">Elimina</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (tenants.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #7f8c8d;">Nessun tenant trovato</td></tr>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento tenants:', error);
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #dc3545;">Errore: ${error.message}</td></tr>`;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function loadUsers() {
+            const loading = document.getElementById('usersLoading');
+            const table = document.getElementById('usersTable');
+            const tbody = table.querySelector('tbody');
+            
+            try {
+                console.log('👥 Caricamento utenti...');
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                
+                const response = await apiCall(`/tenants/${currentUser.tenant_id}/users`);
+                const users = response.users || [];
+                
+                console.log('✅ Utenti caricati:', users.length);
+                
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.email}</td>
+                        <td><span class="badge ${user.report_enabled ? 'badge-success' : 'badge-warning'}">
+                            ${user.report_enabled ? 'Sì' : 'No'}
+                        </span></td>
+                        <td>${parseReportSchedule(user.report_schedule || '{}')}</td>
+                        <td>
+                            <button class="btn btn-small" onclick="editUser('${user.user_id}')" style="margin-right: 5px;">Modifica</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteUser('${user.user_id}')">Elimina</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #7f8c8d;">Nessun utente trovato</td></tr>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento utenti:', error);
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #dc3545;">Errore: ${error.message}</td></tr>`;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function handleCreateReseller(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Creazione in corso...';
+                hideError('resellerError');
+                
+                const body = {
+                    name: document.getElementById('resellerName').value,
+                    email: document.getElementById('resellerEmail').value,
+                    password: document.getElementById('resellerPassword').value
+                };
+                
+                console.log('👤 Creazione reseller...');
+                
+                await apiCall('/resellers', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Reseller creato con successo');
+                closeModal('createResellerModal');
+                await loadResellers();
+                e.target.reset();
+                
+            } catch (error) {
+                console.error('❌ Errore creazione reseller:', error);
+                showError('resellerError', error.message || 'Errore nella creazione del reseller');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function assignTenantToReseller(resellerId, resellerName) {
+            try {
+                // Load all tenants for selection
+                const tenantsResponse = await apiCall('/tenants');
+                const tenants = tenantsResponse.tenants || [];
+                
+                // Populate form
+                document.getElementById('assignResellerId').value = resellerId;
+                document.getElementById('assignResellerName').value = resellerName;
+                
+                // Populate tenant dropdown
+                const tenantSelect = document.getElementById('assignTenantId');
+                tenantSelect.innerHTML = '<option value="">-- Seleziona un tenant --</option>';
+                tenants.forEach(tenant => {
+                    const option = document.createElement('option');
+                    option.value = tenant.tenant_id;
+                    option.textContent = `${tenant.name} (${tenant.admin_email})`;
+                    tenantSelect.appendChild(option);
+                });
+                
+                openModal('assignTenantModal');
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento tenant per assegnazione:', error);
+                alert('Errore nel caricamento dei tenant: ' + error.message);
+            }
+        }
+
+        async function handleAssignTenant(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Assegnazione in corso...';
+                hideError('assignTenantError');
+                
+                const body = {
+                    reseller_id: document.getElementById('assignResellerId').value,
+                    tenant_id: document.getElementById('assignTenantId').value
+                };
+                
+                if (!body.reseller_id || !body.tenant_id) {
+                    throw new Error('Seleziona un tenant');
+                }
+                
+                console.log('🔗 Assegnazione tenant a reseller...');
+                
+                await apiCall('/resellers/assign-tenant', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Tenant assegnato con successo');
+                closeModal('assignTenantModal');
+                await loadResellers();
+                
+            } catch (error) {
+                console.error('❌ Errore assegnazione tenant:', error);
+                showError('assignTenantError', error.message || 'Errore nell\'assegnazione del tenant');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function viewResellerTenants(resellerId, resellerName) {
+            try {
+                document.getElementById('viewResellerId').value = resellerId;
+                const loading = document.getElementById('resellerTenantsLoading');
+                const table = document.getElementById('resellerTenantsTable');
+                const tbody = table.querySelector('tbody');
+                
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                hideError('resellerTenantsError');
+                
+                const response = await apiCall(`/resellers/${resellerId}/tenants`);
+                const tenants = response.tenants || [];
+                
+                tenants.forEach(tenant => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tenant.name}</td>
+                        <td>${tenant.admin_email}</td>
+                        <td>
+                            <button class="btn btn-small btn-danger" onclick="removeTenantFromReseller('${resellerId}', '${tenant.tenant_id}', '${tenant.name}')">Rimuovi</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (tenants.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #7f8c8d;">Nessun tenant assegnato</td></tr>';
+                }
+                
+                openModal('viewResellerTenantsModal');
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento tenant reseller:', error);
+                showError('resellerTenantsError', error.message || 'Errore nel caricamento dei tenant');
+            } finally {
+                document.getElementById('resellerTenantsLoading').classList.add('hidden');
+            }
+        }
+
+        async function removeTenantFromReseller(resellerId, tenantId, tenantName) {
+            if (!confirm(`Sei sicuro di voler rimuovere il tenant "${tenantName}" da questo reseller?`)) return;
+            
+            try {
+                console.log('🔗 Rimozione tenant da reseller...');
+                
+                await apiCall('/resellers/remove-tenant', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        reseller_id: resellerId,
+                        tenant_id: tenantId
+                    })
+                });
+                
+                console.log('✅ Tenant rimosso con successo');
+                await viewResellerTenants(resellerId, '');
+                await loadResellers();
+                
+            } catch (error) {
+                console.error('❌ Errore rimozione tenant:', error);
+                alert('Errore durante la rimozione: ' + error.message);
+            }
+        }
+
+        async function handleCreateTenant(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Creazione in corso...';
+                hideError('tenantError');
+                
+                const body = {
+                    name: document.getElementById('tenantName').value,
+                    admin_email: document.getElementById('tenantAdminEmail').value,
+                    admin_name: document.getElementById('tenantAdminName').value,
+                    admin_password: document.getElementById('tenantAdminPassword').value
+                };
+                
+                console.log('🏢 Creazione tenant...');
+                
+                await apiCall('/tenants', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Tenant creato con successo');
+                closeModal('createTenantModal');
+                await loadTenants();
+                e.target.reset();
+                
+            } catch (error) {
+                console.error('❌ Errore creazione tenant:', error);
+                showError('tenantError', error.message || 'Errore nella creazione del tenant');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function handleCreateUser(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Creazione in corso...';
+                hideError('userError');
+                
+                // Small delay to ensure DOM is ready
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // CRITICAL FIX: Use querySelector to avoid ID conflicts
+                const modal = document.getElementById('createUserModal');
+                const nameField = document.querySelector('#createUserModal #userName');
+                const emailField = document.querySelector('#createUserModal #userEmail');
+                const xmlEndpointField = document.querySelector('#createUserModal #userXmlEndpoint');
+                const xmlTokenField = document.querySelector('#createUserModal #userXmlToken');
+                
+                // CRITICAL FIX: Ensure we get values correctly with fallbacks
+                const formData = {
+                    name: nameField?.value?.trim() || '',
+                    email: emailField?.value?.trim() || '',
+                    xml_endpoint: xmlEndpointField?.value?.trim() || '',
+                    xml_token: xmlTokenField?.value?.trim() || ''
+                };
+                
+                console.log('📋 Form data extracted (FIXED):', formData);
+                
+                // Additional validation: Check if form is actually filled
+                if (!formData.name || !formData.email || !formData.xml_endpoint) {
+                    const missingFields = [];
+                    if (!formData.name) missingFields.push('Nome');
+                    if (!formData.email) missingFields.push('Email'); 
+                    if (!formData.xml_endpoint) missingFields.push('XML Endpoint');
+                    
+                    throw new Error(`Per favore compila tutti i campi richiesti: ${missingFields.join(', ')}`);
+                }
+                
+                const frequency = document.getElementById('userReportFrequency')?.value || 'daily';
+                const localTime = document.getElementById('userReportTime')?.value || '09:00';
+                
+                // Convert local time to UTC before saving
+                const utcTime = convertLocalTimeToUTC(localTime);
+                
+                const schedule = {
+                    frequency: frequency,
+                    time: utcTime
+                };
+                
+                if (frequency === 'weekly') {
+                    schedule.day_of_week = document.getElementById('userWeeklyDay').value;
+                } else if (frequency === 'monthly') {
+                    schedule.day_of_month = document.getElementById('userMonthlyDay').value;
+                }
+                
+                const body = {
+                    name: formData.name,
+                    email: formData.email,
+                    xml_endpoint: formData.xml_endpoint,
+                    xml_token: formData.xml_token,
+                    role: 'User',
+                    report_schedule: JSON.stringify(schedule),
+                    report_email: document.getElementById('userReportEmail')?.value?.trim() || ''
+                };
+                
+                // Validazione campi richiesti
+                if (!body.name || !body.email || !body.xml_endpoint) {
+                    throw new Error(`Campi mancanti: ${!body.name ? 'nome ' : ''}${!body.email ? 'email ' : ''}${!body.xml_endpoint ? 'xml_endpoint' : ''}`);
+                }
+                
+                console.log('👤 Creazione utente...');
+                console.log('📦 Body da inviare:', body);
+                
+                await apiCall(`/tenants/${currentUser.tenant_id}/users`, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Utente creato con successo');
+                closeModal('createUserModal');
+                await loadUsers();
+                e.target.reset();
+                
+            } catch (error) {
+                console.error('❌ Errore creazione utente:', error);
+                showError('userError', error.message || 'Errore nella creazione dell\'utente');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function editUser(userId) {
+            try {
+                console.log('📝 Caricamento dati utente per modifica:', userId);
+                
+                // Fetch user data
+                const response = await apiCall(`/users/${userId}`);
+                const user = response.user;
+                
+                if (!user) {
+                    throw new Error('Utente non trovato');
+                }
+                
+                // Populate form
+                document.getElementById('editUserId').value = userId;
+                document.getElementById('editUserName').value = user.name || '';
+                document.getElementById('editUserEmail').value = user.email || '';
+                document.getElementById('editUserReportEmail').value = user.report_email || '';
+                document.getElementById('editUserXmlEndpoint').value = user.xml_endpoint || '';
+                document.getElementById('editUserXmlToken').value = user.xml_token || '';
+                document.getElementById('editUserReportEnabled').checked = user.report_enabled || false;
+                
+                // Parse and set schedule
+                const schedule = parseReportScheduleObject(user.report_schedule);
+                if (schedule) {
+                    document.getElementById('editUserReportFrequency').value = schedule.frequency;
+                    document.getElementById('editUserReportTime').value = schedule.time;
+                    if (schedule.day_of_week) {
+                        document.getElementById('editUserWeeklyDay').value = schedule.day_of_week;
+                    }
+                    if (schedule.day_of_month) {
+                        document.getElementById('editUserMonthlyDay').value = schedule.day_of_month;
+                    }
+                    toggleScheduleFields(schedule.frequency, 'editUser');
+                }
+                
+                // Populate monthly day options if needed
+                const monthlySelect = document.getElementById('editUserMonthlyDay');
+                if (monthlySelect && monthlySelect.children.length === 0) {
+                    for (let i = 1; i <= 28; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = i;
+                        monthlySelect.appendChild(option);
+                    }
+                }
+                
+                openModal('editUserModal');
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento utente:', error);
+                showError('editUserError', error.message || 'Errore nel caricamento dell\'utente');
+            }
+        }
+
+        async function handleEditUser(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Salvataggio...';
+                hideError('editUserError');
+                
+                const userId = document.getElementById('editUserId').value;
+                if (!userId) {
+                    throw new Error('ID utente non valido');
+                }
+                
+                const frequency = document.getElementById('editUserReportFrequency').value;
+                const localTime = document.getElementById('editUserReportTime').value;
+                
+                // Convert local time to UTC before saving
+                const utcTime = convertLocalTimeToUTC(localTime);
+                
+                const schedule = {
+                    frequency: frequency,
+                    time: utcTime
+                };
+                
+                if (frequency === 'weekly') {
+                    schedule.day_of_week = document.getElementById('editUserWeeklyDay').value;
+                } else if (frequency === 'monthly') {
+                    schedule.day_of_month = document.getElementById('editUserMonthlyDay').value;
+                }
+                
+                const body = {
+                    name: document.getElementById('editUserName').value,
+                    xml_endpoint: document.getElementById('editUserXmlEndpoint').value,
+                    xml_token: document.getElementById('editUserXmlToken').value,
+                    report_enabled: document.getElementById('editUserReportEnabled').checked,
+                    report_schedule: JSON.stringify(schedule),
+                    report_email: document.getElementById('editUserReportEmail').value?.trim() || ''
+                };
+                
+                console.log('💾 Aggiornamento utente:', userId);
+                console.log('📦 Body da inviare:', body);
+                
+                await apiCall(`/users/${userId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Utente aggiornato con successo');
+                closeModal('editUserModal');
+                await loadUsers();
+                
+            } catch (error) {
+                console.error('❌ Errore aggiornamento utente:', error);
+                showError('editUserError', error.message || 'Errore nell\'aggiornamento dell\'utente');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Sei sicuro di voler eliminare questo utente?')) return;
+            
+            try {
+                console.log('🗑️ Eliminazione utente:', userId);
+                await apiCall(`/users/${userId}`, { method: 'DELETE' });
+                await loadUsers();
+                console.log('✅ Utente eliminato');
+            } catch (error) {
+                console.error('❌ Errore eliminazione utente:', error);
+                alert('Errore durante l\'eliminazione: ' + error.message);
+            }
+        }
+
+        async function deleteTenant(tenantId) {
+            if (!confirm('Sei sicuro di voler eliminare questo tenant?')) return;
+            
+            try {
+                console.log('🗑️ Eliminazione tenant:', tenantId);
+                await apiCall(`/tenants/${tenantId}`, { method: 'DELETE' });
+                await loadTenants();
+                console.log('✅ Tenant eliminato');
+            } catch (error) {
+                console.error('❌ Errore eliminazione tenant:', error);
+                alert('Errore durante l\'eliminazione: ' + error.message);
+            }
+        }
+
+        async function loadAllReports() {
+            console.log('📊 Caricamento report globali - TODO');
+            // TODO: Implementation for loading all reports
+        }
+
+        async function loadTenantReports() {
+            console.log('📊 Caricamento report tenant - TODO');
+            // TODO: Implementation for loading tenant reports
+        }
+
+        async function loadUserReports() {
+            console.log('📊 Caricamento report utente - TODO');
+            // TODO: Implementation for loading user reports
+        }
+
+        // ========================================
+        // UTILITY FUNCTIONS
+        // ========================================
+        
+        async function apiCall(endpoint, options = {}) {
+            const url = API_BASE_URL + endpoint;
+            
+            console.log('🌐 Chiamata API:', {
+                url: url,
+                method: options.method || 'GET',
+                hasToken: !!jwtToken
+            });
+            
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`
+                },
+                ...options
+            };
+            
+            try {
+                const response = await fetch(url, config);
+                
+                console.log('📡 Risposta API:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return data;
+                
+            } catch (error) {
+                console.error('❌ Errore chiamata API:', {
+                    endpoint: endpoint,
+                    error: error.message,
+                    url: url
+                });
+                throw error;
+            }
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function hideError(elementId) {
+            const element = document.getElementById(elementId);
+            element.classList.add('hidden');
+        }
+
+        function showMessage(elementId, message, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `${type === 'error' ? 'error' : 'success'}-message`;
+            element.classList.remove('hidden');
+            
+            if (type === 'success') {
+                setTimeout(() => element.classList.add('hidden'), 5000);
+            }
+        }
+
+        function hideMessage(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        function showLoginPage() {
+            console.log('🔐 Mostra pagina login');
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('dashboardPage').classList.remove('active');
+            hideChangePasswordForm();
+        }
+
+        function showDashboard() {
+            console.log('🏠 Mostra dashboard');
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('dashboardPage').classList.add('active');
+        }
+
+        function showChangePasswordForm() {
+            console.log('🔄 Mostra form cambio password');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('changePasswordForm').classList.remove('hidden');
+        }
+
+        function hideChangePasswordForm() {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('changePasswordForm').classList.add('hidden');
+        }
+
+        // ========================================
+        // GESTIONE ERRORI GLOBALI
+        // ========================================
+        
+        window.addEventListener('error', function(e) {
+            console.error('❌ Errore JavaScript globale:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('❌ Promise rejection non gestita:', e.reason);
+        });
+    </script>
+</body>
+</html>
