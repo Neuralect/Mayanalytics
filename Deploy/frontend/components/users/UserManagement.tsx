@@ -77,7 +77,7 @@ export default function UserManagement({ users, tenantId, onRefresh }: Props) {
                         {user.report_enabled ? 'Sì' : 'No'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 border-b">{formatReportSchedule(user.report_schedule)}</td>
+                    <td className="px-4 py-3 border-b">{formatReportSchedule(user.report_schedule ?? null)}</td>
                     <td className="px-4 py-3 border-b">
                       <div className="flex gap-2">
                         <button
