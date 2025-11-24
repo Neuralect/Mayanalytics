@@ -20,6 +20,7 @@ REGION = os.environ['REGION']
 TENANTS_TABLE = os.environ['TENANTS_TABLE']
 USERS_TABLE = os.environ['USERS_TABLE']
 REPORTS_TABLE = os.environ.get('REPORTS_TABLE', '')
+RESELLER_TENANTS_TABLE = os.environ.get('RESELLER_TENANTS_TABLE', '')
 USER_POOL_ID = os.environ['USER_POOL_ID']
 
 # DynamoDB tables
@@ -27,6 +28,8 @@ tenants_table = dynamodb.Table(TENANTS_TABLE)
 users_table = dynamodb.Table(USERS_TABLE)
 if REPORTS_TABLE:
     reports_table = dynamodb.Table(REPORTS_TABLE)
+if RESELLER_TENANTS_TABLE:
+    reseller_tenants_table = dynamodb.Table(RESELLER_TENANTS_TABLE)
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -86,10 +89,10 @@ def get_user_from_event(event: Dict) -> Dict:
     else:
         groups = []
     
-    # CRITICAL FIX: If tenant_id is empty but user is SuperAdmin, set to SYSTEM
-    if not tenant_id and 'SuperAdmin' in groups:
+    # CRITICAL FIX: If tenant_id is empty but user is SuperAdmin or Reseller, set to SYSTEM
+    if not tenant_id and ('SuperAdmin' in groups or 'Reseller' in groups):
         tenant_id = 'SYSTEM'
-        logger.info(f"SuperAdmin detected, setting tenant_id to SYSTEM")
+        logger.info(f"SuperAdmin or Reseller detected, setting tenant_id to SYSTEM")
     
     user_data = {
         'user_id': user_id,
@@ -106,9 +109,53 @@ def is_super_admin(user: Dict) -> bool:
     """Check if user is SuperAdmin"""
     return 'SuperAdmin' in user.get('groups', [])
 
+def is_reseller(user: Dict) -> bool:
+    """Check if user is Reseller"""
+    return 'Reseller' in user.get('groups', [])
+
 def is_admin(user: Dict) -> bool:
     """Check if user is Admin"""
     return 'Admin' in user.get('groups', [])
+
+def get_reseller_tenants(reseller_id: str) -> List[str]:
+    """Get list of tenant IDs assigned to a reseller"""
+    if not RESELLER_TENANTS_TABLE:
+        return []
+    
+    try:
+        result = reseller_tenants_table.query(
+            KeyConditionExpression='reseller_id = :rid',
+            ExpressionAttributeValues={':rid': reseller_id}
+        )
+        return [item['tenant_id'] for item in result.get('Items', [])]
+    except Exception as e:
+        logger.error(f"Error getting reseller tenants: {str(e)}")
+        return []
+
+def is_tenant_assigned_to_reseller(tenant_id: str, reseller_id: str) -> bool:
+    """Check if a tenant is assigned to a reseller"""
+    if not RESELLER_TENANTS_TABLE:
+        return False
+    
+    try:
+        result = reseller_tenants_table.get_item(
+            Key={
+                'reseller_id': reseller_id,
+                'tenant_id': tenant_id
+            }
+        )
+        return 'Item' in result
+    except Exception as e:
+        logger.error(f"Error checking tenant assignment: {str(e)}")
+        return False
+
+def can_reseller_access_tenant(user: Dict, tenant_id: str) -> bool:
+    """Check if reseller can access a specific tenant"""
+    if not is_reseller(user):
+        return False
+    
+    reseller_id = user['user_id']
+    return is_tenant_assigned_to_reseller(tenant_id, reseller_id)
 
 def response(status_code: int, body: Dict) -> Dict:
     """Create API Gateway response"""
@@ -159,7 +206,14 @@ def get_profile(user: Dict) -> Dict:
         user_profile = result['Items'][0]
         
         # Add role from groups
-        user_profile['role'] = 'SuperAdmin' if is_super_admin(user) else ('Admin' if is_admin(user) else 'User')
+        if is_super_admin(user):
+            user_profile['role'] = 'SuperAdmin'
+        elif is_reseller(user):
+            user_profile['role'] = 'Reseller'
+        elif is_admin(user):
+            user_profile['role'] = 'Admin'
+        else:
+            user_profile['role'] = 'User'
         
         return response(200, {'user': user_profile})
         
@@ -235,9 +289,9 @@ def update_profile(event: Dict, user: Dict) -> Dict:
 # ========================================
 
 def create_user(event: Dict, user: Dict) -> Dict:
-    """Create new user within tenant (Admin only)"""
-    if not is_admin(user) and not is_super_admin(user):
-        return response(403, {'error': 'Unauthorized: Admin only'})
+    """Create new user within tenant (Admin, Reseller, or SuperAdmin only)"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
     
     try:
         tenant_id = event['pathParameters']['tenant_id']
@@ -245,6 +299,10 @@ def create_user(event: Dict, user: Dict) -> Dict:
         # Authorization check - Admin can only manage their own tenant
         if is_admin(user) and user['tenant_id'] != tenant_id:
             return response(403, {'error': 'Unauthorized: Cannot manage other tenants'})
+        
+        # Authorization check - Reseller can only manage their assigned tenants
+        if is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+            return response(403, {'error': 'Unauthorized: Cannot manage tenants not assigned to you'})
         
         body = json.loads(event.get('body', '{}'))
         
@@ -329,9 +387,9 @@ def create_user(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 def list_users(event: Dict, user: Dict) -> Dict:
-    """List users within tenant (Admin only)"""
-    if not is_admin(user) and not is_super_admin(user):
-        return response(403, {'error': 'Unauthorized: Admin only'})
+    """List users within tenant (Admin, Reseller, or SuperAdmin only)"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
     
     try:
         tenant_id = event['pathParameters']['tenant_id']
@@ -339,6 +397,10 @@ def list_users(event: Dict, user: Dict) -> Dict:
         # Authorization check - Admin can only see their own tenant
         if is_admin(user) and user['tenant_id'] != tenant_id:
             return response(403, {'error': 'Unauthorized: Cannot access other tenants'})
+        
+        # Authorization check - Reseller can only see their assigned tenants
+        if is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+            return response(403, {'error': 'Unauthorized: Cannot access tenants not assigned to you'})
         
         # Query users by tenant_id using GSI
         result = users_table.query(
@@ -375,11 +437,13 @@ def get_user(event: Dict, user: Dict) -> Dict:
         target_user = result['Items'][0]
         
         # Authorization check
-        if not is_super_admin(user):
+        if not is_super_admin(user) and not is_reseller(user):
             if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
                 return response(403, {'error': 'Unauthorized'})
             elif not is_admin(user) and user['user_id'] != user_id:
                 return response(403, {'error': 'Unauthorized'})
+        elif is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized: Cannot access users from tenants not assigned to you'})
         
         return response(200, {'user': target_user})
         
@@ -405,11 +469,13 @@ def update_user(event: Dict, user: Dict) -> Dict:
         target_user = result['Items'][0]
         
         # Authorization check
-        if not is_super_admin(user):
+        if not is_super_admin(user) and not is_reseller(user):
             if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
                 return response(403, {'error': 'Unauthorized'})
             elif not is_admin(user) and user['user_id'] != user_id:
                 return response(403, {'error': 'Unauthorized'})
+        elif is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized: Cannot update users from tenants not assigned to you'})
         
         # Update fields
         update_expression = "SET "
@@ -449,9 +515,9 @@ def update_user(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 def delete_user(event: Dict, user: Dict) -> Dict:
-    """Delete user (Admin only)"""
-    if not is_admin(user) and not is_super_admin(user):
-        return response(403, {'error': 'Unauthorized: Admin only'})
+    """Delete user (Admin, Reseller, or SuperAdmin only)"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
     
     try:
         user_id = event['pathParameters']['user_id']
@@ -470,6 +536,10 @@ def delete_user(event: Dict, user: Dict) -> Dict:
         # Authorization check
         if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
             return response(403, {'error': 'Unauthorized: Cannot delete users from other tenants'})
+        
+        # Authorization check - Reseller can only delete users from their assigned tenants
+        if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized: Cannot delete users from tenants not assigned to you'})
         
         # Delete from Cognito
         cognito.admin_delete_user(
@@ -496,9 +566,9 @@ def delete_user(event: Dict, user: Dict) -> Dict:
 # ========================================
 
 def create_tenant(event: Dict, user: Dict) -> Dict:
-    """Create new tenant with admin user (SuperAdmin only)"""
-    if not is_super_admin(user):
-        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    """Create new tenant with admin user (SuperAdmin or Reseller)"""
+    if not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin or Reseller only'})
     
     try:
         body = json.loads(event.get('body', '{}'))
@@ -589,6 +659,23 @@ def create_tenant(event: Dict, user: Dict) -> Dict:
         
         users_table.put_item(Item=admin_user_item)
         
+        # If created by Reseller, automatically assign tenant to reseller
+        if is_reseller(user):
+            reseller_id = user['user_id']
+            try:
+                reseller_tenants_table.put_item(
+                    Item={
+                        'reseller_id': reseller_id,
+                        'tenant_id': tenant_id,
+                        'assigned_at': timestamp,
+                        'assigned_by': 'self'  # Self-assigned by reseller
+                    }
+                )
+                logger.info(f"Auto-assigned tenant {tenant_id} to reseller {reseller_id}")
+            except Exception as e:
+                logger.error(f"Error auto-assigning tenant to reseller: {str(e)}")
+                # Don't fail the tenant creation if assignment fails
+        
         logger.info(f"Created admin user with UUID {real_user_id} for tenant {tenant_id}")
         
         return response(201, {
@@ -604,13 +691,33 @@ def create_tenant(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 def list_tenants(user: Dict) -> Dict:
-    """List all tenants (SuperAdmin only)"""
-    if not is_super_admin(user):
-        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    """List tenants (SuperAdmin sees all, Reseller sees only assigned)"""
+    if not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin or Reseller only'})
     
     try:
-        result = tenants_table.scan()
-        tenants = result.get('Items', [])
+        if is_super_admin(user):
+            # SuperAdmin sees all tenants
+            result = tenants_table.scan()
+            tenants = result.get('Items', [])
+        else:
+            # Reseller sees only assigned tenants
+            reseller_id = user['user_id']
+            assigned_tenant_ids = get_reseller_tenants(reseller_id)
+            
+            if not assigned_tenant_ids:
+                return response(200, {'tenants': []})
+            
+            # Fetch tenant details for assigned tenants
+            tenants = []
+            for tenant_id in assigned_tenant_ids:
+                try:
+                    result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+                    if 'Item' in result:
+                        tenants.append(result['Item'])
+                except Exception as e:
+                    logger.error(f"Error fetching tenant {tenant_id}: {str(e)}")
+        
         return response(200, {'tenants': tenants})
         
     except Exception as e:
@@ -622,9 +729,11 @@ def get_tenant(event: Dict, user: Dict) -> Dict:
     tenant_id = event['pathParameters']['tenant_id']
     
     # Authorization check
-    if not is_super_admin(user):
+    if not is_super_admin(user) and not is_reseller(user):
         if not is_admin(user) or user['tenant_id'] != tenant_id:
             return response(403, {'error': 'Unauthorized'})
+    elif is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+        return response(403, {'error': 'Unauthorized: Cannot access tenant not assigned to you'})
     
     try:
         result = tenants_table.get_item(Key={'tenant_id': tenant_id})
@@ -636,6 +745,284 @@ def get_tenant(event: Dict, user: Dict) -> Dict:
         
     except Exception as e:
         logger.error(f"Error getting tenant: {str(e)}")
+        return response(500, {'error': str(e)})
+
+# ========================================
+# RESELLER MANAGEMENT
+# ========================================
+
+def create_reseller(event: Dict, user: Dict) -> Dict:
+    """Create new reseller user (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        required_fields = ['email', 'name', 'password']
+        for field in required_fields:
+            if not body.get(field):
+                return response(400, {'error': f'Missing required field: {field}'})
+        
+        timestamp = datetime.utcnow().isoformat()
+        
+        # Create Cognito user for reseller with temporary password
+        # The user will be required to change password on first login
+        cognito.admin_create_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            UserAttributes=[
+                {'Name': 'email', 'Value': body['email']},
+                {'Name': 'email_verified', 'Value': 'true'},
+                {'Name': 'custom:tenant_id', 'Value': 'SYSTEM'}  # Reseller has SYSTEM tenant_id like SuperAdmin
+            ],
+            TemporaryPassword=body['password'],
+            MessageAction='SUPPRESS'  # Don't send email, we'll provide password manually
+        )
+        
+        # Create Reseller group if it doesn't exist, then add user to it
+        try:
+            # Try to get the group first
+            cognito.get_group(
+                UserPoolId=USER_POOL_ID,
+                GroupName='Reseller'
+            )
+        except cognito.exceptions.ResourceNotFoundException:
+            # Group doesn't exist, create it
+            logger.info('Creating Reseller group in Cognito')
+            cognito.create_group(
+                UserPoolId=USER_POOL_ID,
+                GroupName='Reseller',
+                Description='Reseller users with admin privileges for assigned tenants'
+            )
+        
+        # Add to Reseller group
+        cognito.admin_add_user_to_group(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            GroupName='Reseller'
+        )
+        
+        # NOTE: We do NOT set permanent password here
+        # The user will be required to change password on first login
+        # This is the standard Cognito flow for new users
+        
+        # Get real UUID from Cognito
+        reseller_response = cognito.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email']
+        )
+        
+        real_user_id = None
+        for attr in reseller_response['UserAttributes']:
+            if attr['Name'] == 'sub':
+                real_user_id = attr['Value']
+                break
+        
+        if not real_user_id:
+            raise Exception('Could not extract user UUID from Cognito')
+        
+        # Create reseller user record in DynamoDB
+        reseller_user_item = {
+            'user_id': real_user_id,
+            'tenant_id': 'SYSTEM',  # Reseller has SYSTEM tenant_id
+            'email': body['email'],
+            'name': body['name'],
+            'role': 'Reseller',
+            'created_at': timestamp,
+            'xml_endpoint': '',
+            'xml_token': '',
+            'report_enabled': False,
+            'report_schedule': json.dumps({
+                'frequency': 'daily',
+                'time': '09:00'
+            })
+        }
+        
+        users_table.put_item(Item=reseller_user_item)
+        
+        logger.info(f"Created reseller user with UUID {real_user_id}")
+        
+        return response(201, {
+            'message': 'Reseller created successfully',
+            'reseller_id': real_user_id,
+            'email': body['email'],
+            'temporary_password': body['password'],  # Return password so SuperAdmin can provide it to reseller
+            'note': 'User must change password on first login'
+        })
+        
+    except cognito.exceptions.UsernameExistsException:
+        return response(400, {'error': 'User with this email already exists'})
+    except Exception as e:
+        logger.error(f"Error creating reseller: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def assign_tenant_to_reseller(event: Dict, user: Dict) -> Dict:
+    """Assign tenant to reseller (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        if not body.get('reseller_id') or not body.get('tenant_id'):
+            return response(400, {'error': 'Missing required fields: reseller_id, tenant_id'})
+        
+        reseller_id = body['reseller_id']
+        tenant_id = body['tenant_id']
+        
+        # Verify tenant exists
+        tenant_result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+        if 'Item' not in tenant_result:
+            return response(404, {'error': 'Tenant not found'})
+        
+        # Verify reseller exists
+        reseller_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': reseller_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        if not reseller_result.get('Items') or reseller_result['Items'][0].get('role') != 'Reseller':
+            return response(404, {'error': 'Reseller not found'})
+        
+        # Check if already assigned
+        if is_tenant_assigned_to_reseller(tenant_id, reseller_id):
+            return response(400, {'error': 'Tenant already assigned to this reseller'})
+        
+        # Assign tenant to reseller
+        timestamp = datetime.utcnow().isoformat()
+        reseller_tenants_table.put_item(
+            Item={
+                'reseller_id': reseller_id,
+                'tenant_id': tenant_id,
+                'assigned_at': timestamp,
+                'assigned_by': user['user_id']  # SuperAdmin who assigned
+            }
+        )
+        
+        logger.info(f"Assigned tenant {tenant_id} to reseller {reseller_id}")
+        
+        return response(200, {
+            'message': 'Tenant assigned to reseller successfully',
+            'reseller_id': reseller_id,
+            'tenant_id': tenant_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error assigning tenant to reseller: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def remove_tenant_from_reseller(event: Dict, user: Dict) -> Dict:
+    """Remove tenant from reseller (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        if not body.get('reseller_id') or not body.get('tenant_id'):
+            return response(400, {'error': 'Missing required fields: reseller_id, tenant_id'})
+        
+        reseller_id = body['reseller_id']
+        tenant_id = body['tenant_id']
+        
+        # Check if assigned
+        if not is_tenant_assigned_to_reseller(tenant_id, reseller_id):
+            return response(404, {'error': 'Tenant not assigned to this reseller'})
+        
+        # Remove assignment
+        reseller_tenants_table.delete_item(
+            Key={
+                'reseller_id': reseller_id,
+                'tenant_id': tenant_id
+            }
+        )
+        
+        logger.info(f"Removed tenant {tenant_id} from reseller {reseller_id}")
+        
+        return response(200, {
+            'message': 'Tenant removed from reseller successfully',
+            'reseller_id': reseller_id,
+            'tenant_id': tenant_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error removing tenant from reseller: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_resellers(user: Dict) -> Dict:
+    """List all resellers (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        # Query all users with role Reseller
+        result = users_table.scan(
+            FilterExpression='#role = :role',
+            ExpressionAttributeNames={'#role': 'role'},
+            ExpressionAttributeValues={':role': 'Reseller'}
+        )
+        
+        resellers = result.get('Items', [])
+        
+        # For each reseller, get their assigned tenants
+        for reseller in resellers:
+            reseller_id = reseller['user_id']
+            assigned_tenant_ids = get_reseller_tenants(reseller_id)
+            reseller['assigned_tenants'] = assigned_tenant_ids
+            reseller['assigned_tenants_count'] = len(assigned_tenant_ids)
+        
+        return response(200, {'resellers': resellers})
+        
+    except Exception as e:
+        logger.error(f"Error listing resellers: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
+    """Get list of tenants assigned to a reseller (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        reseller_id = event['pathParameters']['reseller_id']
+        
+        # Verify reseller exists
+        reseller_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': reseller_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        if not reseller_result.get('Items') or reseller_result['Items'][0].get('role') != 'Reseller':
+            return response(404, {'error': 'Reseller not found'})
+        
+        # Get assigned tenants
+        assigned_tenant_ids = get_reseller_tenants(reseller_id)
+        
+        # Fetch tenant details
+        tenants = []
+        for tenant_id in assigned_tenant_ids:
+            try:
+                result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+                if 'Item' in result:
+                    tenants.append(result['Item'])
+            except Exception as e:
+                logger.error(f"Error fetching tenant {tenant_id}: {str(e)}")
+        
+        return response(200, {
+            'reseller_id': reseller_id,
+            'tenants': tenants,
+            'count': len(tenants)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting reseller tenants: {str(e)}")
         return response(500, {'error': str(e)})
 
 # ========================================
@@ -697,6 +1084,32 @@ def lambda_handler(event, context):
                 return get_profile(user)
             elif method == 'PUT':
                 return update_profile(event, user)
+        
+        elif path == '/resellers':
+            if method == 'POST':
+                return create_reseller(event, user)
+            elif method == 'GET':
+                return list_resellers(user)
+        
+        elif path == '/resellers/assign-tenant':
+            if method == 'POST':
+                return assign_tenant_to_reseller(event, user)
+        
+        elif path == '/resellers/remove-tenant':
+            if method == 'POST':
+                return remove_tenant_from_reseller(event, user)
+        
+        elif '/resellers/' in path and '/tenants' in path:
+            # Extract reseller_id from path like /resellers/{reseller_id}/tenants
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'resellers' and path_parts[3] == 'tenants':
+                reseller_id = path_parts[2]
+                # Add reseller_id to pathParameters for the function
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['reseller_id'] = reseller_id
+                if method == 'GET':
+                    return get_reseller_tenants_list(event, user)
         
         return response(404, {'error': 'Not found'})
         

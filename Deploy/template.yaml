@@ -89,6 +89,29 @@ Resources:
         Enabled: true
       BillingMode: PAY_PER_REQUEST
 
+  ResellerTenantsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-reseller-tenants-${Environment}
+      AttributeDefinitions:
+        - AttributeName: reseller_id
+          AttributeType: S
+        - AttributeName: tenant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reseller_id
+          KeyType: HASH
+        - AttributeName: tenant_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: tenant-index
+          KeySchema:
+            - AttributeName: tenant_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   # ========================================
   # S3 BUCKET
   # ========================================
@@ -161,6 +184,7 @@ Resources:
           TENANTS_TABLE: !Ref TenantsTable
           USERS_TABLE: !Ref UsersTable
           REPORTS_TABLE: !Ref ReportHistoryTable
+          RESELLER_TENANTS_TABLE: !Ref ResellerTenantsTable
           # REFERENCE MANUALLY CREATED USER POOL
           USER_POOL_ID: eu-central-1_axvljML1p
       Policies:
@@ -170,6 +194,8 @@ Resources:
             TableName: !Ref UsersTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ReportHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ResellerTenantsTable
         - Statement:
           - Effect: Allow
             Action:
@@ -181,6 +207,9 @@ Resources:
               - cognito-idp:AdminAddUserToGroup
               - cognito-idp:AdminRemoveUserFromGroup
               - cognito-idp:AdminSetUserPassword
+              - cognito-idp:CreateGroup
+              - cognito-idp:GetGroup
+              - cognito-idp:ListGroups
             # REFERENCE MANUALLY CREATED USER POOL ARN
             Resource: arn:aws:cognito-idp:eu-central-1:960902921831:userpool/eu-central-1_axvljML1p
         - Statement:
@@ -280,6 +309,36 @@ Resources:
             Path: /profile
             Method: put
             RestApiId: !Ref ApiGateway
+        CreateReseller:
+          Type: Api
+          Properties:
+            Path: /resellers
+            Method: post
+            RestApiId: !Ref ApiGateway
+        ListResellers:
+          Type: Api
+          Properties:
+            Path: /resellers
+            Method: get
+            RestApiId: !Ref ApiGateway
+        AssignTenantToReseller:
+          Type: Api
+          Properties:
+            Path: /resellers/assign-tenant
+            Method: post
+            RestApiId: !Ref ApiGateway
+        RemoveTenantFromReseller:
+          Type: Api
+          Properties:
+            Path: /resellers/remove-tenant
+            Method: post
+            RestApiId: !Ref ApiGateway
+        GetResellerTenants:
+          Type: Api
+          Properties:
+            Path: /resellers/{reseller_id}/tenants
+            Method: get
+            RestApiId: !Ref ApiGateway
         TestReport:
           Type: Api
           Properties:
@@ -355,6 +414,38 @@ Resources:
           Type: Api
           Properties:
             Path: /test-report
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ResellersOptions:
+          Type: Api
+          Properties:
+            Path: /resellers
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ResellerAssignOptions:
+          Type: Api
+          Properties:
+            Path: /resellers/assign-tenant
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ResellerRemoveOptions:
+          Type: Api
+          Properties:
+            Path: /resellers/remove-tenant
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ResellerTenantsOptions:
+          Type: Api
+          Properties:
+            Path: /resellers/{reseller_id}/tenants
             Method: options
             RestApiId: !Ref ApiGateway
             Auth:

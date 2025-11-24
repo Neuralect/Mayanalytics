@@ -394,6 +394,26 @@
             <!-- SuperAdmin Section -->
             <div id="superadminSection" class="hidden">
                 <div class="card">
+                    <h3>Gestione Reseller</h3>
+                    <button id="createResellerBtn" class="btn" style="width: auto; margin-bottom: 20px;">+ Crea Nuovo Reseller</button>
+                    <div id="resellersLoading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Caricamento reseller...</p>
+                    </div>
+                    <table class="table" id="resellersTable">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Tenant Assegnati</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="card">
                     <h3>Gestione Tenant</h3>
                     <button id="createTenantBtn" class="btn" style="width: auto; margin-bottom: 20px;">+ Crea Nuovo Tenant</button>
                     <div id="tenantsLoading" class="loading hidden">
@@ -666,6 +686,87 @@
         </div>
     </div>
 
+    <!-- Create Reseller Modal -->
+    <div id="createResellerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crea Nuovo Reseller</h3>
+            </div>
+            <div id="resellerError" class="error-message hidden"></div>
+            <form id="createResellerForm">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="resellerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="resellerEmail" required>
+                    <small style="color: #7f8c8d;">Email per login (deve essere univoca)</small>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="resellerPassword" required minlength="8">
+                    <small style="color: #7f8c8d; display: block; margin-top: 5px;">
+                        Minimo 8 caratteri, almeno una maiuscola e un numero
+                    </small>
+                </div>
+                <button type="submit" class="btn">Crea Reseller</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('createResellerModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Tenant to Reseller Modal -->
+    <div id="assignTenantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Assegna Tenant a Reseller</h3>
+            </div>
+            <div id="assignTenantError" class="error-message hidden"></div>
+            <form id="assignTenantForm">
+                <input type="hidden" id="assignResellerId">
+                <div class="form-group">
+                    <label>Reseller</label>
+                    <input type="text" id="assignResellerName" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Seleziona Tenant</label>
+                    <select id="assignTenantId" required>
+                        <option value="">-- Seleziona un tenant --</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Assegna Tenant</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('assignTenantModal')">Annulla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Reseller Tenants Modal -->
+    <div id="viewResellerTenantsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tenant Assegnati al Reseller</h3>
+            </div>
+            <div id="resellerTenantsError" class="error-message hidden"></div>
+            <input type="hidden" id="viewResellerId">
+            <div id="resellerTenantsLoading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Caricamento tenant...</p>
+            </div>
+            <table class="table" id="resellerTenantsTable" style="margin-top: 20px;">
+                <thead>
+                    <tr>
+                        <th>Nome Tenant</th>
+                        <th>Admin Email</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary" onclick="closeModal('viewResellerTenantsModal')" style="margin-top: 20px;">Chiudi</button>
+        </div>
+    </div>
+
     <!-- Edit User Modal -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
@@ -792,12 +893,15 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('changePasswordForm').addEventListener('submit', handlePasswordChange);
             document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            document.getElementById('createResellerBtn')?.addEventListener('click', () => openModal('createResellerModal'));
             document.getElementById('createTenantBtn')?.addEventListener('click', () => openModal('createTenantModal'));
             document.getElementById('createUserBtn')?.addEventListener('click', () => openModal('createUserModal'));
+            document.getElementById('createResellerForm').addEventListener('submit', handleCreateReseller);
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
             document.getElementById('editUserForm').addEventListener('submit', handleEditUser);
             document.getElementById('profileForm').addEventListener('submit', handleUpdateProfile);
+            document.getElementById('assignTenantForm').addEventListener('submit', handleAssignTenant);
         }
 
         function populateMonthlyDays() {
@@ -1039,7 +1143,16 @@
                     const superAdminSection = document.getElementById('superadminSection');
                     if (superAdminSection) {
                         superAdminSection.classList.remove('hidden');
+                        await loadResellers();
                         await loadTenants();
+                        await loadAllReports();
+                    }
+                } else if (currentUser.role === 'Reseller') {
+                    // Reseller sees same view as SuperAdmin but filtered
+                    const superAdminSection = document.getElementById('superadminSection');
+                    if (superAdminSection) {
+                        superAdminSection.classList.remove('hidden');
+                        await loadTenants(); // Will be filtered by backend
                         await loadAllReports();
                     }
                 } else if (currentUser.role === 'Admin') {
@@ -1069,6 +1182,7 @@
         function getRoleBadgeClass(role) {
             switch (role) {
                 case 'SuperAdmin': return 'danger';
+                case 'Reseller': return 'info';
                 case 'Admin': return 'warning';
                 default: return 'info';
             }
@@ -1259,6 +1373,47 @@
             }
         }
 
+        async function loadResellers() {
+            const loading = document.getElementById('resellersLoading');
+            const table = document.getElementById('resellersTable');
+            const tbody = table.querySelector('tbody');
+            
+            try {
+                console.log('👥 Caricamento reseller...');
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                
+                const response = await apiCall('/resellers');
+                const resellers = response.resellers || [];
+                
+                console.log('✅ Reseller caricati:', resellers.length);
+                
+                resellers.forEach(reseller => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${reseller.name || 'N/A'}</td>
+                        <td>${reseller.email}</td>
+                        <td><span class="badge badge-info">${reseller.assigned_tenants_count || 0} tenant</span></td>
+                        <td>
+                            <button class="btn btn-small" onclick="viewResellerTenants('${reseller.user_id}', '${reseller.name || reseller.email}')" style="margin-right: 5px;">Vedi Tenant</button>
+                            <button class="btn btn-small" onclick="assignTenantToReseller('${reseller.user_id}', '${reseller.name || reseller.email}')">Assegna Tenant</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (resellers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #7f8c8d;">Nessun reseller trovato</td></tr>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento reseller:', error);
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #dc3545;">Errore: ${error.message}</td></tr>`;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
         async function loadTenants() {
             const loading = document.getElementById('tenantsLoading');
             const table = document.getElementById('tenantsTable');
@@ -1340,6 +1495,174 @@
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #dc3545;">Errore: ${error.message}</td></tr>`;
             } finally {
                 loading.classList.add('hidden');
+            }
+        }
+
+        async function handleCreateReseller(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Creazione in corso...';
+                hideError('resellerError');
+                
+                const body = {
+                    name: document.getElementById('resellerName').value,
+                    email: document.getElementById('resellerEmail').value,
+                    password: document.getElementById('resellerPassword').value
+                };
+                
+                console.log('👤 Creazione reseller...');
+                
+                await apiCall('/resellers', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Reseller creato con successo');
+                closeModal('createResellerModal');
+                await loadResellers();
+                e.target.reset();
+                
+            } catch (error) {
+                console.error('❌ Errore creazione reseller:', error);
+                showError('resellerError', error.message || 'Errore nella creazione del reseller');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function assignTenantToReseller(resellerId, resellerName) {
+            try {
+                // Load all tenants for selection
+                const tenantsResponse = await apiCall('/tenants');
+                const tenants = tenantsResponse.tenants || [];
+                
+                // Populate form
+                document.getElementById('assignResellerId').value = resellerId;
+                document.getElementById('assignResellerName').value = resellerName;
+                
+                // Populate tenant dropdown
+                const tenantSelect = document.getElementById('assignTenantId');
+                tenantSelect.innerHTML = '<option value="">-- Seleziona un tenant --</option>';
+                tenants.forEach(tenant => {
+                    const option = document.createElement('option');
+                    option.value = tenant.tenant_id;
+                    option.textContent = `${tenant.name} (${tenant.admin_email})`;
+                    tenantSelect.appendChild(option);
+                });
+                
+                openModal('assignTenantModal');
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento tenant per assegnazione:', error);
+                alert('Errore nel caricamento dei tenant: ' + error.message);
+            }
+        }
+
+        async function handleAssignTenant(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Assegnazione in corso...';
+                hideError('assignTenantError');
+                
+                const body = {
+                    reseller_id: document.getElementById('assignResellerId').value,
+                    tenant_id: document.getElementById('assignTenantId').value
+                };
+                
+                if (!body.reseller_id || !body.tenant_id) {
+                    throw new Error('Seleziona un tenant');
+                }
+                
+                console.log('🔗 Assegnazione tenant a reseller...');
+                
+                await apiCall('/resellers/assign-tenant', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                
+                console.log('✅ Tenant assegnato con successo');
+                closeModal('assignTenantModal');
+                await loadResellers();
+                
+            } catch (error) {
+                console.error('❌ Errore assegnazione tenant:', error);
+                showError('assignTenantError', error.message || 'Errore nell\'assegnazione del tenant');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function viewResellerTenants(resellerId, resellerName) {
+            try {
+                document.getElementById('viewResellerId').value = resellerId;
+                const loading = document.getElementById('resellerTenantsLoading');
+                const table = document.getElementById('resellerTenantsTable');
+                const tbody = table.querySelector('tbody');
+                
+                loading.classList.remove('hidden');
+                tbody.innerHTML = '';
+                hideError('resellerTenantsError');
+                
+                const response = await apiCall(`/resellers/${resellerId}/tenants`);
+                const tenants = response.tenants || [];
+                
+                tenants.forEach(tenant => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tenant.name}</td>
+                        <td>${tenant.admin_email}</td>
+                        <td>
+                            <button class="btn btn-small btn-danger" onclick="removeTenantFromReseller('${resellerId}', '${tenant.tenant_id}', '${tenant.name}')">Rimuovi</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                if (tenants.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #7f8c8d;">Nessun tenant assegnato</td></tr>';
+                }
+                
+                openModal('viewResellerTenantsModal');
+                
+            } catch (error) {
+                console.error('❌ Errore caricamento tenant reseller:', error);
+                showError('resellerTenantsError', error.message || 'Errore nel caricamento dei tenant');
+            } finally {
+                document.getElementById('resellerTenantsLoading').classList.add('hidden');
+            }
+        }
+
+        async function removeTenantFromReseller(resellerId, tenantId, tenantName) {
+            if (!confirm(`Sei sicuro di voler rimuovere il tenant "${tenantName}" da questo reseller?`)) return;
+            
+            try {
+                console.log('🔗 Rimozione tenant da reseller...');
+                
+                await apiCall('/resellers/remove-tenant', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        reseller_id: resellerId,
+                        tenant_id: tenantId
+                    })
+                });
+                
+                console.log('✅ Tenant rimosso con successo');
+                await viewResellerTenants(resellerId, '');
+                await loadResellers();
+                
+            } catch (error) {
+                console.error('❌ Errore rimozione tenant:', error);
+                alert('Errore durante la rimozione: ' + error.message);
             }
         }
 
