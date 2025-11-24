@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --gradient-start: #667eea;
+  --gradient-end: #764ba2;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+  min-height: 100vh;
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-500 text-white hover:bg-gray-600;
+  }
+  
+  .btn-danger {
+    @apply bg-gradient-to-r from-[#e74c3c] to-[#c0392b] text-white hover:shadow-lg;
+  }
+  
+  .btn-small {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .card {
+    @apply bg-white rounded-2xl p-6 shadow-xl mb-6;
+  }
+  
+  .input {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#667eea] transition-colors;
+  }
+  
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold uppercase;
+  }
+}

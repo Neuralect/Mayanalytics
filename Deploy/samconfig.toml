@@ -5,10 +5,10 @@ stack_name = "maya-analytics-meridix"
 resolve_s3 = true
 s3_prefix = "maya-analytics-meridix"
 region = "eu-central-1"
-profile = "AdministratorAccess-960902921831"
+profile = "Neuralect_Maya_share"
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "Environment=\"prod\""
-confirm_changeset = false
+confirm_changeset = true
 image_repositories = []
 
 [default.build.parameters]

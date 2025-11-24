@@ -698,8 +698,8 @@ def list_tenants(user: Dict) -> Dict:
     try:
         if is_super_admin(user):
             # SuperAdmin sees all tenants
-            result = tenants_table.scan()
-            tenants = result.get('Items', [])
+        result = tenants_table.scan()
+        tenants = result.get('Items', [])
         else:
             # Reseller sees only assigned tenants
             reseller_id = user['user_id']
@@ -1026,6 +1026,119 @@ def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 # ========================================
+# REPORTS MANAGEMENT
+# ========================================
+
+def list_all_reports(user: Dict) -> Dict:
+    """List all reports across all tenants (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        if not REPORTS_TABLE:
+            return response(200, {'reports': []})
+        
+        # Scan all reports
+        result = reports_table.scan()
+        reports = result.get('Items', [])
+        
+        # Sort by timestamp descending
+        reports.sort(key=lambda x: x.get('report_timestamp', ''), reverse=True)
+        
+        return response(200, {'reports': reports})
+        
+    except Exception as e:
+        logger.error(f"Error listing all reports: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_tenant_reports(event: Dict, user: Dict) -> Dict:
+    """List reports for a specific tenant (Admin or Reseller)"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
+    
+    try:
+        tenant_id = event['pathParameters']['tenant_id']
+        
+        # Authorization check
+        if is_admin(user) and user['tenant_id'] != tenant_id:
+            return response(403, {'error': 'Unauthorized: Cannot access other tenants'})
+        
+        if is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+            return response(403, {'error': 'Unauthorized: Cannot access tenants not assigned to you'})
+        
+        if not REPORTS_TABLE:
+            return response(200, {'reports': []})
+        
+        # Query reports by tenant_id using GSI (if exists) or scan and filter
+        # Note: This assumes reports have a tenant_id field
+        # If using GSI, would be: reports_table.query(IndexName='tenant-index', ...)
+        result = reports_table.scan(
+            FilterExpression='tenant_id = :tid',
+            ExpressionAttributeValues={':tid': tenant_id}
+        )
+        
+        reports = result.get('Items', [])
+        reports.sort(key=lambda x: x.get('report_timestamp', ''), reverse=True)
+        
+        return response(200, {'reports': reports})
+        
+    except Exception as e:
+        logger.error(f"Error listing tenant reports: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_user_reports(event: Dict, user: Dict) -> Dict:
+    """List reports for a specific user"""
+    try:
+        user_id = event['pathParameters']['user_id']
+        
+        # Authorization check
+        if not is_super_admin(user) and not is_reseller(user):
+            if is_admin(user):
+                # Admin can see reports of users in their tenant
+                target_user_result = users_table.query(
+                    KeyConditionExpression='user_id = :uid',
+                    ExpressionAttributeValues={':uid': user_id}
+                )
+                if not target_user_result.get('Items'):
+                    return response(404, {'error': 'User not found'})
+                target_user = target_user_result['Items'][0]
+                if user['tenant_id'] != target_user['tenant_id']:
+                    return response(403, {'error': 'Unauthorized'})
+            else:
+                # Regular user can only see their own reports
+                if user['user_id'] != user_id:
+                    return response(403, {'error': 'Unauthorized'})
+        elif is_reseller(user):
+            # Reseller can see reports of users in their assigned tenants
+            target_user_result = users_table.query(
+                KeyConditionExpression='user_id = :uid',
+                ExpressionAttributeValues={':uid': user_id}
+            )
+            if not target_user_result.get('Items'):
+                return response(404, {'error': 'User not found'})
+            target_user = target_user_result['Items'][0]
+            if not can_reseller_access_tenant(user, target_user['tenant_id']):
+                return response(403, {'error': 'Unauthorized: Cannot access users from tenants not assigned to you'})
+        
+        if not REPORTS_TABLE:
+            return response(200, {'reports': []})
+        
+        # Query reports by user_id
+        result = reports_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': user_id}
+        )
+        
+        reports = result.get('Items', [])
+        reports.sort(key=lambda x: x.get('report_timestamp', ''), reverse=True)
+        
+        return response(200, {'reports': reports})
+        
+    except Exception as e:
+        logger.error(f"Error listing user reports: {str(e)}")
+        return response(500, {'error': str(e)})
+
+# ========================================
 # MAIN HANDLER
 # ========================================
 
@@ -1067,9 +1180,17 @@ def lambda_handler(event, context):
             elif method == 'GET':
                 return list_users(event, user)
         
+        elif path.startswith('/tenants/') and path.endswith('/reports'):
+            if method == 'GET':
+                return list_tenant_reports(event, user)
+        
         elif path.startswith('/tenants/') and '/users' not in path and '/reports' not in path:
             if method == 'GET':
                 return get_tenant(event, user)
+        
+        elif path.startswith('/users/') and path.endswith('/reports'):
+            if method == 'GET':
+                return list_user_reports(event, user)
         
         elif path.startswith('/users/') and not path.endswith('/reports'):
             if method == 'GET':
@@ -1078,6 +1199,10 @@ def lambda_handler(event, context):
                 return update_user(event, user)
             elif method == 'DELETE':
                 return delete_user(event, user)
+        
+        elif path == '/reports':
+            if method == 'GET':
+                return list_all_reports(user)
         
         elif path == '/profile':
             if method == 'GET':
