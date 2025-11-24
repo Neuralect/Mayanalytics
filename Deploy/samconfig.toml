@@ -1,0 +1,15 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "maya-analytics-meridix"
+resolve_s3 = true
+s3_prefix = "maya-analytics-meridix"
+region = "eu-central-1"
+profile = "AdministratorAccess-960902921831"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=\"prod\""
+confirm_changeset = false
+image_repositories = []
+
+[default.build.parameters]
+use_container = true

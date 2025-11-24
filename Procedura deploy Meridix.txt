@@ -1,0 +1,6 @@
+cd /d "D:\Neuralect\APPLICAZIONI\Vertical - Multitenant Setera Meridix\Deploy"
+aws sso login --profile AdministratorAccess-960902921831
+sam build
+sam deploy --guided --profile AdministratorAccess-960902921831 (guided prima volta per creare risorse)
+sam deploy --profile AdministratorAccess-960902921831
+create-superadmin-complete.bat (cambia email / nome utente / password) ATTENZIONE INCLUDE CLEANUP DA COMMENTARE CHE CANCELLA UTENTI VECCHI SUPERADMIN SE UGUALI

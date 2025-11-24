@@ -1,0 +1,460 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Maya - Analytics Assistant per Setera Centralino (Updated with personalized schedules)
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.13
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
+
+Resources:
+  # ========================================
+  # COGNITO USER POOL - REFERENCE EXISTING
+  # ========================================
+  # NOTE: User Pool created manually with ID: eu-central-1_axvljML1p
+  # We just reference it in the outputs and environment variables
+  
+  # ========================================
+  # DYNAMODB TABLES
+  # ========================================
+  TenantsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-tenants-${Environment}
+      AttributeDefinitions:
+        - AttributeName: tenant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tenant_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-users-${Environment}
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: tenant_id
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: tenant_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: email-index
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: tenant-index
+          KeySchema:
+            - AttributeName: tenant_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  ReportHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-report-history-${Environment}
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: report_timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: report_timestamp
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      BillingMode: PAY_PER_REQUEST
+
+  # ========================================
+  # S3 BUCKET
+  # ========================================
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub maya-reports-${AWS::AccountId}-${Environment}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldReports
+            Status: Enabled
+            ExpirationInDays: 90
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ========================================
+  # API GATEWAY
+  # ========================================
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
+        AllowOrigin: "'*'"
+        AllowCredentials: false
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        UNAUTHORIZED:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Requested-With'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+          StatusCode: 401
+      Auth:
+        DefaultAuthorizer: CognitoAuth
+        Authorizers:
+          CognitoAuth:
+            # REFERENCE MANUALLY CREATED USER POOL
+            UserPoolArn: arn:aws:cognito-idp:eu-central-1:960902921831:userpool/eu-central-1_axvljML1p
+
+  # ========================================
+  # API BACKEND LAMBDA
+  # ========================================
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub maya-api-${Environment}
+      CodeUri: src/api/
+      Handler: api.lambda_handler
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          TENANTS_TABLE: !Ref TenantsTable
+          USERS_TABLE: !Ref UsersTable
+          REPORTS_TABLE: !Ref ReportHistoryTable
+          # REFERENCE MANUALLY CREATED USER POOL
+          USER_POOL_ID: eu-central-1_axvljML1p
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TenantsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportHistoryTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:AdminCreateUser
+              - cognito-idp:AdminDeleteUser
+              - cognito-idp:AdminUpdateUserAttributes
+              - cognito-idp:AdminGetUser
+              - cognito-idp:ListUsers
+              - cognito-idp:AdminAddUserToGroup
+              - cognito-idp:AdminRemoveUserFromGroup
+              - cognito-idp:AdminSetUserPassword
+            # REFERENCE MANUALLY CREATED USER POOL ARN
+            Resource: arn:aws:cognito-idp:eu-central-1:960902921831:userpool/eu-central-1_axvljML1p
+        - Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !GetAtt ReportGeneratorFunction.Arn
+      Events:
+        # Main endpoints
+        CreateTenant:
+          Type: Api
+          Properties:
+            Path: /tenants
+            Method: post
+            RestApiId: !Ref ApiGateway
+        ListTenants:
+          Type: Api
+          Properties:
+            Path: /tenants
+            Method: get
+            RestApiId: !Ref ApiGateway
+        GetTenant:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}
+            Method: get
+            RestApiId: !Ref ApiGateway
+        UpdateTenant:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}
+            Method: put
+            RestApiId: !Ref ApiGateway
+        DeleteTenant:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}
+            Method: delete
+            RestApiId: !Ref ApiGateway
+        CreateUser:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/users
+            Method: post
+            RestApiId: !Ref ApiGateway
+        ListUsers:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/users
+            Method: get
+            RestApiId: !Ref ApiGateway
+        ListTenantReports:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/reports
+            Method: get
+            RestApiId: !Ref ApiGateway
+        GetUser:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: get
+            RestApiId: !Ref ApiGateway
+        UpdateUser:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: put
+            RestApiId: !Ref ApiGateway
+        DeleteUser:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: delete
+            RestApiId: !Ref ApiGateway
+        ListUserReports:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/reports
+            Method: get
+            RestApiId: !Ref ApiGateway
+        ListAllReports:
+          Type: Api
+          Properties:
+            Path: /reports
+            Method: get
+            RestApiId: !Ref ApiGateway
+        GetProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: get
+            RestApiId: !Ref ApiGateway
+        UpdateProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: put
+            RestApiId: !Ref ApiGateway
+        TestReport:
+          Type: Api
+          Properties:
+            Path: /test-report
+            Method: post
+            RestApiId: !Ref ApiGateway
+        # OPTIONS endpoints for CORS preflight - NO AUTH
+        ProfileOptions:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TenantsOptions:
+          Type: Api
+          Properties:
+            Path: /tenants
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TenantIdOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TenantUsersOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/users
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TenantReportsOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        UsersOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        UserReportsOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ReportsOptions:
+          Type: Api
+          Properties:
+            Path: /reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TestReportOptions:
+          Type: Api
+          Properties:
+            Path: /test-report
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+
+  # ========================================
+  # REPORT GENERATOR LAMBDA (UPDATED FOR PERSONALIZED SCHEDULES)
+  # ========================================
+  ReportGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub maya-report-generator-${Environment}
+      CodeUri: src/report-generator/
+      Handler: report_generator.lambda_handler
+      Timeout: 301  # UPDATED: Changed to force deployment
+      MemorySize: 1536  # Increased for matplotlib chart generation
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          USERS_TABLE: !Ref UsersTable
+          REPORTS_TABLE: !Ref ReportHistoryTable
+          EMAIL_SENDER_FUNCTION: !Sub maya-email-sender-v2-${Environment}
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportHistoryTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: 
+              - "arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0"
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:maya-email-sender-v2-${Environment}"
+      Events:
+        # UPDATED: Single cron that checks every minute for personalized schedules
+        ScheduleChecker:
+          Type: Schedule
+          Properties:
+            Schedule: cron(* * * * ? *)
+            Description: Check every minute for personalized report schedules
+            Enabled: true
+            Input: '{"trigger_type": "schedule_check"}'
+
+  # ========================================
+  # EMAIL SENDER LAMBDA (RESTORED)
+  # ========================================
+  EmailSenderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub maya-email-sender-v2-${Environment}
+      CodeUri: src/email-sender/
+      Handler: email_sender.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          SES_FROM_EMAIL: noreply@neuralect.it
+          REPORTS_TABLE: !Ref ReportHistoryTable
+          FORCE_UPDATE: "2025-11-11"  # Force update trigger
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ReportHistoryTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway URL"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiUrl
+
+  UserPoolId:
+    Description: "Cognito User Pool ID (manually created)"
+    Value: eu-central-1_axvljML1p
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+
+  UserPoolClientId:
+    Description: "Cognito User Pool Client ID (manually created)"
+    Value: 7kldhiejpdctothvt82vkdgn3
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId
+
+  ReportsBucketName:
+    Description: "S3 Bucket for Reports"
+    Value: !Ref ReportsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-ReportsBucket
+
+  Region:
+    Description: "AWS Region"
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub ${AWS::StackName}-Region
