@@ -30,11 +30,19 @@ export default function ContextSelector() {
 
   const handleSelectGlobal = () => {
     setSelectedTenantId(null);
+    // Mark that context has been selected (even if global)
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('contextSelected', 'true');
+    }
     setShowContextSelector(false);
   };
 
   const handleSelectTenant = (tenantId: string) => {
     setSelectedTenantId(tenantId);
+    // Mark that context has been selected
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('contextSelected', 'true');
+    }
     setShowContextSelector(false);
   };
 

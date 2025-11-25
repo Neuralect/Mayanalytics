@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('cognito_id_token');
       sessionStorage.removeItem('selectedTenantId');
+      sessionStorage.removeItem('contextSelected');
     }
     setUser(null);
     setCurrentCognitoUser(null);

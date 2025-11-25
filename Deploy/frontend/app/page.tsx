@@ -14,9 +14,9 @@ export default function Home() {
   useEffect(() => {
     if (user && !loading && !requiresPasswordChange) {
       if ((user.role === 'SuperAdmin' || user.role === 'Reseller') && !showContextSelector) {
-        // Check if there's a saved tenant context
-        const savedTenantId = typeof window !== 'undefined' ? sessionStorage.getItem('selectedTenantId') : null;
-        if (!savedTenantId) {
+        // Check if context has been selected (either global or tenant)
+        const contextSelected = typeof window !== 'undefined' ? sessionStorage.getItem('contextSelected') : null;
+        if (!contextSelected) {
           setShowContextSelector(true);
         }
       }
