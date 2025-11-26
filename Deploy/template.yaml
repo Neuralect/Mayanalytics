@@ -19,11 +19,75 @@ Parameters:
 
 Resources:
   # ========================================
-  # COGNITO USER POOL - REFERENCE EXISTING
+  # COGNITO USER POOL - CREATE NEW
   # ========================================
-  # NOTE: User Pool created manually with ID: eu-central-1_axvljML1p
-  # We just reference it in the outputs and environment variables
-  
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub maya-analytics-${Environment}
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: custom:tenant_id
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub maya-analytics-client-${Environment}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+
+  # ========================================
+  # COGNITO GROUPS
+  # ========================================
+  SuperAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: SuperAdmin
+      UserPoolId: !Ref CognitoUserPool
+      Description: SuperAdmin group
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Admin
+      UserPoolId: !Ref CognitoUserPool
+      Description: Admin group
+
+  ResellerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Reseller
+      UserPoolId: !Ref CognitoUserPool
+      Description: Reseller group
+
+  UserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: User
+      UserPoolId: !Ref CognitoUserPool
+      Description: User group
+
   # ========================================
   # DYNAMODB TABLES
   # ========================================
@@ -166,8 +230,7 @@ Resources:
         DefaultAuthorizer: CognitoAuth
         Authorizers:
           CognitoAuth:
-            # REFERENCE MANUALLY CREATED USER POOL
-            UserPoolArn: arn:aws:cognito-idp:eu-central-1:960902921831:userpool/eu-central-1_axvljML1p
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
 
   # ========================================
   # API BACKEND LAMBDA
@@ -185,8 +248,7 @@ Resources:
           USERS_TABLE: !Ref UsersTable
           REPORTS_TABLE: !Ref ReportHistoryTable
           RESELLER_TENANTS_TABLE: !Ref ResellerTenantsTable
-          # REFERENCE MANUALLY CREATED USER POOL
-          USER_POOL_ID: eu-central-1_axvljML1p
+          USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref TenantsTable
@@ -211,7 +273,7 @@ Resources:
               - cognito-idp:GetGroup
               - cognito-idp:ListGroups
             # REFERENCE MANUALLY CREATED USER POOL ARN
-            Resource: arn:aws:cognito-idp:eu-central-1:960902921831:userpool/eu-central-1_axvljML1p
+            Resource: !GetAtt CognitoUserPool.Arn
         - Statement:
           - Effect: Allow
             Action:
@@ -219,6 +281,14 @@ Resources:
             Resource: !GetAtt ReportGeneratorFunction.Arn
       Events:
         # Main endpoints
+        TenantsOptions:
+          Type: Api
+          Properties:
+            Path: /tenants
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         CreateTenant:
           Type: Api
           Properties:
@@ -231,6 +301,14 @@ Resources:
             Path: /tenants
             Method: get
             RestApiId: !Ref ApiGateway
+        TenantIdOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         GetTenant:
           Type: Api
           Properties:
@@ -249,6 +327,14 @@ Resources:
             Path: /tenants/{tenant_id}
             Method: delete
             RestApiId: !Ref ApiGateway
+        TenantUsersOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/users
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         CreateUser:
           Type: Api
           Properties:
@@ -261,12 +347,28 @@ Resources:
             Path: /tenants/{tenant_id}/users
             Method: get
             RestApiId: !Ref ApiGateway
+        TenantReportsOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         ListTenantReports:
           Type: Api
           Properties:
             Path: /tenants/{tenant_id}/reports
             Method: get
             RestApiId: !Ref ApiGateway
+        UserIdOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         GetUser:
           Type: Api
           Properties:
@@ -285,18 +387,42 @@ Resources:
             Path: /users/{user_id}
             Method: delete
             RestApiId: !Ref ApiGateway
+        UserReportsOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         ListUserReports:
           Type: Api
           Properties:
             Path: /users/{user_id}/reports
             Method: get
             RestApiId: !Ref ApiGateway
+        ReportsOptions:
+          Type: Api
+          Properties:
+            Path: /reports
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         ListAllReports:
           Type: Api
           Properties:
             Path: /reports
             Method: get
             RestApiId: !Ref ApiGateway
+        ProfileOptions:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         GetProfile:
           Type: Api
           Properties:
@@ -309,6 +435,14 @@ Resources:
             Path: /profile
             Method: put
             RestApiId: !Ref ApiGateway
+        ResellersOptions:
+          Type: Api
+          Properties:
+            Path: /resellers
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
         CreateReseller:
           Type: Api
           Properties:
@@ -321,111 +455,6 @@ Resources:
             Path: /resellers
             Method: get
             RestApiId: !Ref ApiGateway
-        AssignTenantToReseller:
-          Type: Api
-          Properties:
-            Path: /resellers/assign-tenant
-            Method: post
-            RestApiId: !Ref ApiGateway
-        RemoveTenantFromReseller:
-          Type: Api
-          Properties:
-            Path: /resellers/remove-tenant
-            Method: post
-            RestApiId: !Ref ApiGateway
-        GetResellerTenants:
-          Type: Api
-          Properties:
-            Path: /resellers/{reseller_id}/tenants
-            Method: get
-            RestApiId: !Ref ApiGateway
-        TestReport:
-          Type: Api
-          Properties:
-            Path: /test-report
-            Method: post
-            RestApiId: !Ref ApiGateway
-        # OPTIONS endpoints for CORS preflight - NO AUTH
-        ProfileOptions:
-          Type: Api
-          Properties:
-            Path: /profile
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TenantsOptions:
-          Type: Api
-          Properties:
-            Path: /tenants
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TenantIdOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TenantUsersOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/users
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TenantReportsOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        UsersOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        UserReportsOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ReportsOptions:
-          Type: Api
-          Properties:
-            Path: /reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TestReportOptions:
-          Type: Api
-          Properties:
-            Path: /test-report
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ResellersOptions:
-          Type: Api
-          Properties:
-            Path: /resellers
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
         ResellerAssignOptions:
           Type: Api
           Properties:
@@ -434,6 +463,12 @@ Resources:
             RestApiId: !Ref ApiGateway
             Auth:
               Authorizer: NONE
+        AssignTenantToReseller:
+          Type: Api
+          Properties:
+            Path: /resellers/assign-tenant
+            Method: post
+            RestApiId: !Ref ApiGateway
         ResellerRemoveOptions:
           Type: Api
           Properties:
@@ -442,6 +477,12 @@ Resources:
             RestApiId: !Ref ApiGateway
             Auth:
               Authorizer: NONE
+        RemoveTenantFromReseller:
+          Type: Api
+          Properties:
+            Path: /resellers/remove-tenant
+            Method: post
+            RestApiId: !Ref ApiGateway
         ResellerTenantsOptions:
           Type: Api
           Properties:
@@ -450,6 +491,26 @@ Resources:
             RestApiId: !Ref ApiGateway
             Auth:
               Authorizer: NONE
+        GetResellerTenants:
+          Type: Api
+          Properties:
+            Path: /resellers/{reseller_id}/tenants
+            Method: get
+            RestApiId: !Ref ApiGateway
+        TestReportOptions:
+          Type: Api
+          Properties:
+            Path: /test-report
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        TestReport:
+          Type: Api
+          Properties:
+            Path: /test-report
+            Method: post
+            RestApiId: !Ref ApiGateway
 
   # ========================================
   # REPORT GENERATOR LAMBDA (UPDATED FOR PERSONALIZED SCHEDULES)
@@ -527,14 +588,14 @@ Outputs:
       Name: !Sub ${AWS::StackName}-ApiUrl
 
   UserPoolId:
-    Description: "Cognito User Pool ID (manually created)"
-    Value: eu-central-1_axvljML1p
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
     Export:
       Name: !Sub ${AWS::StackName}-UserPoolId
 
   UserPoolClientId:
-    Description: "Cognito User Pool Client ID (manually created)"
-    Value: 7kldhiejpdctothvt82vkdgn3
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
     Export:
       Name: !Sub ${AWS::StackName}-UserPoolClientId
 

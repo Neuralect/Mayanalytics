@@ -698,8 +698,8 @@ def list_tenants(user: Dict) -> Dict:
     try:
         if is_super_admin(user):
             # SuperAdmin sees all tenants
-        result = tenants_table.scan()
-        tenants = result.get('Items', [])
+            result = tenants_table.scan()
+            tenants = result.get('Items', [])
         else:
             # Reseller sees only assigned tenants
             reseller_id = user['user_id']

@@ -13,10 +13,10 @@ echo =======================================
 echo.
 
 REM ===== CONFIGURAZIONE AGGIORNATA =====
-set PROFILE=AdministratorAccess-960902921831
+set PROFILE=Neuralect_Maya_share
 set REGION=eu-central-1
-set USER_POOL_ID=eu-central-1_axvljML1p
-set CLIENT_ID=7kldhiejpdctothvt82vkdgn3
+set USER_POOL_ID=eu-central-1_t3GcmkM98
+set CLIENT_ID=3hp2kafq3gjk5a96skk5omggbs
 set USERS_TABLE=maya-users-prod
 
 REM ===== DATI SUPERADMIN =====
@@ -238,7 +238,7 @@ echo   Email:      %ADMIN_EMAIL%
 echo   Password:   %ADMIN_PASSWORD%
 echo.
 echo 🌐 URL Frontend:
-echo   API:        https://58mpqfwj34.execute-api.eu-central-1.amazonaws.com/Prod
+echo   API:        https://78jt5iyn1f.execute-api.eu-central-1.amazonaws.com/Prod
 echo   Frontend:   Apri il tuo index.html aggiornato
 echo.
 echo 🚀 Ora puoi accedere al frontend Maya Analytics!
