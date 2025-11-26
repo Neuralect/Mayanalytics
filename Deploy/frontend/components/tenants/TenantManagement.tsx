@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Tenant } from '@/types';
 import { tenantsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateTenantModal from './CreateTenantModal';
+import SearchAndFilter from '../common/SearchAndFilter';
 
 interface Props {
   tenants: Tenant[];
@@ -15,6 +16,10 @@ interface Props {
 export default function TenantManagement({ tenants, onRefresh, canCreate }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { setSelectedTenantId } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDateRange, setFilterDateRange] = useState('all');
 
   const handleEnterTenant = (tenantId: string) => {
     setSelectedTenantId(tenantId);
@@ -33,6 +38,63 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
     }
   };
 
+  // Filter and search logic
+  const filteredTenants = useMemo(() => {
+    let filtered = [...tenants];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (tenant) =>
+          tenant.name.toLowerCase().includes(searchLower) ||
+          tenant.admin_email.toLowerCase().includes(searchLower) ||
+          tenant.admin_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((tenant) => {
+        const status = tenant.status || 'ACTIVE';
+        return status.toLowerCase() === filterStatus.toLowerCase();
+      });
+    }
+
+    // Apply date range filter
+    if (filterDateRange !== 'all' && filterDateRange !== 'none') {
+      const now = new Date();
+      filtered = filtered.filter((tenant) => {
+        if (!tenant.created_at) return false;
+        
+        const createdDate = new Date(tenant.created_at);
+        const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        switch (filterDateRange) {
+          case 'last7days':
+            return daysDiff <= 7;
+          case 'last30days':
+            return daysDiff <= 30;
+          case 'last90days':
+            return daysDiff <= 90;
+          case 'last6months':
+            return daysDiff <= 180;
+          case 'lastyear':
+            return daysDiff <= 365;
+          case 'older':
+            return daysDiff > 365;
+          default:
+            return true;
+        }
+      });
+    } else if (filterDateRange === 'none') {
+      // Filter out tenants without created_at
+      filtered = filtered.filter((tenant) => !tenant.created_at);
+    }
+
+    return filtered;
+  }, [tenants, searchTerm, filterStatus, filterDateRange]);
+
   return (
     <>
       <div className="card">
@@ -48,6 +110,43 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
           )}
         </div>
 
+        <SearchAndFilter
+          searchPlaceholder="Cerca per nome tenant, admin email o nome admin..."
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          filters={[
+            {
+              label: 'Stato',
+              key: 'status',
+              value: filterStatus,
+              onChange: setFilterStatus,
+              options: [
+                { label: 'Tutti', value: 'all' },
+                { label: 'Attivo', value: 'active' },
+                { label: 'Inattivo', value: 'inactive' },
+              ],
+            },
+            {
+              label: 'Data Creazione',
+              key: 'dateRange',
+              value: filterDateRange,
+              onChange: setFilterDateRange,
+              options: [
+                { label: 'Tutti', value: 'all' },
+                { label: 'Ultimi 7 giorni', value: 'last7days' },
+                { label: 'Ultimi 30 giorni', value: 'last30days' },
+                { label: 'Ultimi 90 giorni', value: 'last90days' },
+                { label: 'Ultimi 6 mesi', value: 'last6months' },
+                { label: 'Ultimo anno', value: 'lastyear' },
+                { label: 'Più vecchi di 1 anno', value: 'older' },
+                { label: 'Senza data', value: 'none' },
+              ],
+            },
+          ]}
+        />
+
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -59,19 +158,23 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
               </tr>
             </thead>
             <tbody>
-              {tenants.length === 0 ? (
+              {filteredTenants.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                    Nessun tenant trovato
+                    {tenants.length === 0
+                      ? 'Nessun tenant trovato'
+                      : 'Nessun tenant corrisponde ai filtri selezionati'}
                   </td>
                 </tr>
               ) : (
-                tenants.map((tenant) => (
+                filteredTenants.map((tenant) => (
                   <tr key={tenant.tenant_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 border-b">{tenant.name}</td>
                     <td className="px-4 py-3 border-b">{tenant.admin_email}</td>
                     <td className="px-4 py-3 border-b">
-                      <span className="badge bg-green-100 text-green-800">ATTIVO</span>
+                      <span className="badge bg-green-100 text-green-800">
+                        {tenant.status || 'ATTIVO'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 border-b">
                       <div className="flex gap-2">
