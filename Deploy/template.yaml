@@ -469,6 +469,20 @@ Resources:
             Path: /resellers
             Method: get
             RestApiId: !Ref ApiGateway
+        ResellerIdOptions:
+          Type: Api
+          Properties:
+            Path: /resellers/{reseller_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        DeleteReseller:
+          Type: Api
+          Properties:
+            Path: /resellers/{reseller_id}
+            Method: delete
+            RestApiId: !Ref ApiGateway
         ResellerAssignOptions:
           Type: Api
           Properties:

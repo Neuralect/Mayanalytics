@@ -1032,6 +1032,69 @@ def list_resellers(user: Dict) -> Dict:
         logger.error(f"Error listing resellers: {str(e)}")
         return response(500, {'error': str(e)})
 
+def delete_reseller(event: Dict, user: Dict) -> Dict:
+    """Delete reseller (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        reseller_id = event['pathParameters']['reseller_id']
+        
+        # Verify reseller exists
+        reseller_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': reseller_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        
+        if not reseller_result.get('Items'):
+            return response(404, {'error': 'Reseller not found'})
+        
+        reseller = reseller_result['Items'][0]
+        
+        # Verify it's actually a reseller
+        if reseller.get('role') != 'Reseller':
+            return response(400, {'error': 'User is not a reseller'})
+        
+        # Delete all tenant assignments for this reseller
+        if RESELLER_TENANTS_TABLE:
+            assigned_tenant_ids = get_reseller_tenants(reseller_id)
+            for tenant_id in assigned_tenant_ids:
+                try:
+                    reseller_tenants_table.delete_item(
+                        Key={
+                            'reseller_id': reseller_id,
+                            'tenant_id': tenant_id
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error removing tenant assignment {tenant_id}: {str(e)}")
+                    # Continue even if assignment deletion fails
+        
+        # Delete from Cognito
+        cognito.admin_delete_user(
+            UserPoolId=USER_POOL_ID,
+            Username=reseller['email']
+        )
+        
+        # Delete from DynamoDB
+        users_table.delete_item(
+            Key={
+                'user_id': reseller_id,
+                'tenant_id': 'SYSTEM'
+            }
+        )
+        
+        logger.info(f"Deleted reseller {reseller_id}")
+        
+        return response(200, {'message': 'Reseller deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting reseller: {str(e)}")
+        return response(500, {'error': str(e)})
+
 def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
     """Get list of tenants assigned to a reseller (SuperAdmin only)"""
     if not is_super_admin(user):
@@ -1400,6 +1463,18 @@ def lambda_handler(event, context):
                 return create_reseller(event, user)
             elif method == 'GET':
                 return list_resellers(user)
+        
+        elif '/resellers/' in path and not '/tenants' in path and not '/assign-tenant' in path and not '/remove-tenant' in path:
+            # Extract reseller_id from path like /resellers/{reseller_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'resellers':
+                reseller_id = path_parts[2]
+                # Add reseller_id to pathParameters for the function
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['reseller_id'] = reseller_id
+                if method == 'DELETE':
+                    return delete_reseller(event, user)
         
         elif path == '/resellers/assign-tenant':
             if method == 'POST':
