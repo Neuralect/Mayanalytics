@@ -5,6 +5,7 @@ import { Tenant } from '@/types';
 import { tenantsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import CreateTenantModal from './CreateTenantModal';
+import CreateTenantAdminModal from './CreateTenantAdminModal';
 import SearchAndFilter from '../common/SearchAndFilter';
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
 
 export default function TenantManagement({ tenants, onRefresh, canCreate }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [selectedTenantForAdmin, setSelectedTenantForAdmin] = useState<Tenant | null>(null);
   const { setSelectedTenantId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -38,6 +41,17 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
     }
   };
 
+  const handleCreateAdmin = (tenant: Tenant) => {
+    setSelectedTenantForAdmin(tenant);
+    setShowCreateAdminModal(true);
+  };
+
+  const handleCreateAdminSuccess = () => {
+    setShowCreateAdminModal(false);
+    setSelectedTenantForAdmin(null);
+    onRefresh();
+  };
+
   // Filter and search logic
   const filteredTenants = useMemo(() => {
     let filtered = [...tenants];
@@ -48,7 +62,7 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
       filtered = filtered.filter(
         (tenant) =>
           tenant.name.toLowerCase().includes(searchLower) ||
-          tenant.admin_email.toLowerCase().includes(searchLower) ||
+          tenant.admin_email?.toLowerCase().includes(searchLower) ||
           tenant.admin_name?.toLowerCase().includes(searchLower)
       );
     }
@@ -170,7 +184,7 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
                 filteredTenants.map((tenant) => (
                   <tr key={tenant.tenant_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 border-b">{tenant.name}</td>
-                    <td className="px-4 py-3 border-b">{tenant.admin_email}</td>
+                    <td className="px-4 py-3 border-b">{tenant.admin_email || 'N/A'}</td>
                     <td className="px-4 py-3 border-b">
                       <span className="badge bg-green-100 text-green-800">
                         {tenant.status || 'ATTIVO'}
@@ -184,6 +198,15 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
                         >
                           Entra
                         </button>
+                        {canCreate && !tenant.admin_email && (
+                          <button
+                            onClick={() => handleCreateAdmin(tenant)}
+                            className="btn btn-small bg-yellow-500 hover:bg-yellow-600 text-white"
+                            title="Crea Admin per questo tenant"
+                          >
+                            Crea Admin
+                          </button>
+                        )}
                         {canCreate && (
                           <button
                             onClick={() => handleDelete(tenant.tenant_id)}
@@ -209,6 +232,18 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
             setShowCreateModal(false);
             onRefresh();
           }}
+        />
+      )}
+
+      {showCreateAdminModal && selectedTenantForAdmin && (
+        <CreateTenantAdminModal
+          tenantId={selectedTenantForAdmin.tenant_id}
+          tenantName={selectedTenantForAdmin.name}
+          onClose={() => {
+            setShowCreateAdminModal(false);
+            setSelectedTenantForAdmin(null);
+          }}
+          onSuccess={handleCreateAdminSuccess}
         />
       )}
     </>

@@ -56,6 +56,8 @@ export const tenantsApi = {
   get: (tenantId: string) => apiCall<{ tenant: any }>(`/tenants/${tenantId}`),
   create: (data: any) => apiCall('/tenants', { method: 'POST', body: JSON.stringify(data) }),
   delete: (tenantId: string) => apiCall(`/tenants/${tenantId}`, { method: 'DELETE' }),
+  createAdmin: (tenantId: string, data: any) => 
+    apiCall(`/tenants/${tenantId}/admin`, { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // Users
@@ -79,6 +81,12 @@ export const resellersApi = {
     apiCall('/resellers/assign-tenant', { method: 'POST', body: JSON.stringify(data) }),
   removeTenant: (data: any) => 
     apiCall('/resellers/remove-tenant', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// SuperAdmins
+export const superadminsApi = {
+  list: () => apiCall<{ superadmins: any[] }>('/superadmins'),
+  create: (data: any) => apiCall('/superadmins', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // Reports

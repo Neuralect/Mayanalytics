@@ -73,7 +73,7 @@ export default function AssignTenantModal({ reseller, tenants, onClose, onSucces
               <option value="">-- Seleziona un tenant --</option>
               {tenants.map((tenant) => (
                 <option key={tenant.tenant_id} value={tenant.tenant_id}>
-                  {tenant.name} ({tenant.admin_email})
+                  {tenant.name} {tenant.admin_email ? `(${tenant.admin_email})` : '(Nessun admin)'}
                 </option>
               ))}
             </select>

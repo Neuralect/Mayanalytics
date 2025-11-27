@@ -85,7 +85,7 @@ export default function ViewResellerTenantsModal({ reseller, onClose, onRefresh 
                   tenants.map((tenant) => (
                     <tr key={tenant.tenant_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 border-b">{tenant.name}</td>
-                      <td className="px-4 py-3 border-b">{tenant.admin_email}</td>
+                      <td className="px-4 py-3 border-b">{tenant.admin_email || 'N/A'}</td>
                       <td className="px-4 py-3 border-b">
                         <button
                           onClick={() => handleRemove(tenant.tenant_id, tenant.name)}

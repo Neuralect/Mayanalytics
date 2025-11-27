@@ -21,7 +21,7 @@ export interface User {
 export interface Tenant {
   tenant_id: string;
   name: string;
-  admin_email: string;
+  admin_email?: string;  // Optional - admin can be created separately
   admin_name?: string;
   status?: string;
   created_at?: string;
@@ -34,6 +34,14 @@ export interface Reseller {
   role: 'Reseller';
   assigned_tenants?: string[];
   assigned_tenants_count?: number;
+  created_at?: string;
+}
+
+export interface SuperAdmin {
+  user_id: string;
+  email: string;
+  name?: string;
+  role: 'SuperAdmin';
   created_at?: string;
 }
 
@@ -50,11 +58,14 @@ export interface CreateResellerInput {
   password: string;
 }
 
+export interface CreateSuperAdminInput {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface CreateTenantInput {
   name: string;
-  admin_email: string;
-  admin_name: string;
-  admin_password: string;
 }
 
 export interface CreateUserInput {
@@ -78,6 +89,12 @@ export interface UpdateUserInput {
 export interface AssignTenantInput {
   reseller_id: string;
   tenant_id: string;
+}
+
+export interface CreateTenantAdminInput {
+  email: string;
+  name: string;
+  password: string;
 }
 
 export interface ApiResponse<T = any> {

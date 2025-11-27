@@ -347,6 +347,20 @@ Resources:
             Path: /tenants/{tenant_id}/users
             Method: get
             RestApiId: !Ref ApiGateway
+        TenantAdminOptions:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/admin
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        CreateTenantAdmin:
+          Type: Api
+          Properties:
+            Path: /tenants/{tenant_id}/admin
+            Method: post
+            RestApiId: !Ref ApiGateway
         TenantReportsOptions:
           Type: Api
           Properties:
@@ -495,6 +509,26 @@ Resources:
           Type: Api
           Properties:
             Path: /resellers/{reseller_id}/tenants
+            Method: get
+            RestApiId: !Ref ApiGateway
+        SuperAdminsOptions:
+          Type: Api
+          Properties:
+            Path: /superadmins
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        CreateSuperAdmin:
+          Type: Api
+          Properties:
+            Path: /superadmins
+            Method: post
+            RestApiId: !Ref ApiGateway
+        ListSuperAdmins:
+          Type: Api
+          Properties:
+            Path: /superadmins
             Method: get
             RestApiId: !Ref ApiGateway
         TestReportOptions:

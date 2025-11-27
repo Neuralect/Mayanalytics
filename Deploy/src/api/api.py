@@ -566,98 +566,29 @@ def delete_user(event: Dict, user: Dict) -> Dict:
 # ========================================
 
 def create_tenant(event: Dict, user: Dict) -> Dict:
-    """Create new tenant with admin user (SuperAdmin or Reseller)"""
+    """Create new tenant (SuperAdmin or Reseller) - Admin can be created separately"""
     if not is_super_admin(user) and not is_reseller(user):
         return response(403, {'error': 'Unauthorized: SuperAdmin or Reseller only'})
     
     try:
         body = json.loads(event.get('body', '{}'))
         
-        # Validate required fields
-        required_fields = ['name', 'admin_email', 'admin_name', 'admin_password']
-        for field in required_fields:
-            if not body.get(field):
-                return response(400, {'error': f'Missing required field: {field}'})
+        # Validate required fields - ONLY name is required
+        if not body.get('name'):
+            return response(400, {'error': 'Missing required field: name'})
         
         tenant_id = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat()
         
-        # Create Cognito user for tenant admin
-        cognito.admin_create_user(
-            UserPoolId=USER_POOL_ID,
-            Username=body['admin_email'],
-            UserAttributes=[
-                {'Name': 'email', 'Value': body['admin_email']},
-                {'Name': 'email_verified', 'Value': 'true'},
-                {'Name': 'custom:tenant_id', 'Value': tenant_id}
-            ],
-            TemporaryPassword=body['admin_password'],
-            MessageAction='SUPPRESS'
-        )
-        
-        # Add to Admin group
-        cognito.admin_add_user_to_group(
-            UserPoolId=USER_POOL_ID,
-            Username=body['admin_email'],
-            GroupName='Admin'
-        )
-        
-        # Set permanent password
-        cognito.admin_set_user_password(
-            UserPoolId=USER_POOL_ID,
-            Username=body['admin_email'],
-            Password=body['admin_password'],
-            Permanent=True
-        )
-        
-        # CRITICAL FIX: Get real UUID from Cognito
-        admin_user_response = cognito.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=body['admin_email']
-        )
-        
-        # Extract UUID from UserAttributes
-        real_user_id = None
-        for attr in admin_user_response['UserAttributes']:
-            if attr['Name'] == 'sub':
-                real_user_id = attr['Value']
-                break
-        
-        if not real_user_id:
-            raise Exception('Could not extract user UUID from Cognito')
-        
-        logger.info(f"Admin user real UUID: {real_user_id}")
-        
-        # Create tenant record
+        # Create tenant record (without admin)
         tenant_item = {
             'tenant_id': tenant_id,
             'name': body['name'],
-            'admin_email': body['admin_email'],
-            'admin_name': body['admin_name'],
             'created_at': timestamp,
             'status': 'active'
         }
         
         tenants_table.put_item(Item=tenant_item)
-        
-        # Create admin user record in DynamoDB with REAL UUID
-        admin_user_item = {
-            'user_id': real_user_id,  # FIXED: Use real UUID from Cognito
-            'tenant_id': tenant_id,
-            'email': body['admin_email'],
-            'name': body['admin_name'],
-            'role': 'Admin',
-            'created_at': timestamp,
-            'xml_endpoint': '',
-            'xml_token': '',
-            'report_enabled': False,
-            'report_schedule': json.dumps({
-                'frequency': 'daily',
-                'time': '09:00'
-            })
-        }
-        
-        users_table.put_item(Item=admin_user_item)
         
         # If created by Reseller, automatically assign tenant to reseller
         if is_reseller(user):
@@ -676,12 +607,11 @@ def create_tenant(event: Dict, user: Dict) -> Dict:
                 logger.error(f"Error auto-assigning tenant to reseller: {str(e)}")
                 # Don't fail the tenant creation if assignment fails
         
-        logger.info(f"Created admin user with UUID {real_user_id} for tenant {tenant_id}")
+        logger.info(f"Created tenant {tenant_id} without admin")
         
         return response(201, {
             'message': 'Tenant created successfully',
-            'tenant_id': tenant_id,
-            'admin_user_id': real_user_id  # Return the real UUID for verification
+            'tenant_id': tenant_id
         })
         
     except cognito.exceptions.UsernameExistsException:
@@ -745,6 +675,125 @@ def get_tenant(event: Dict, user: Dict) -> Dict:
         
     except Exception as e:
         logger.error(f"Error getting tenant: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def create_tenant_admin(event: Dict, user: Dict) -> Dict:
+    """Create admin user for a tenant (SuperAdmin or Reseller only)"""
+    if not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin or Reseller only'})
+    
+    try:
+        tenant_id = event['pathParameters']['tenant_id']
+        
+        # Verify tenant exists
+        tenant_result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+        if 'Item' not in tenant_result:
+            return response(404, {'error': 'Tenant not found'})
+        
+        tenant = tenant_result['Item']
+        
+        # Check if tenant already has an admin
+        if tenant.get('admin_email'):
+            return response(400, {'error': 'Tenant already has an admin'})
+        
+        # Authorization check - Reseller can only manage their assigned tenants
+        if is_reseller(user) and not can_reseller_access_tenant(user, tenant_id):
+            return response(403, {'error': 'Unauthorized: Cannot manage tenants not assigned to you'})
+        
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        required_fields = ['email', 'name', 'password']
+        for field in required_fields:
+            if not body.get(field):
+                return response(400, {'error': f'Missing required field: {field}'})
+        
+        timestamp = datetime.utcnow().isoformat()
+        
+        # Create Cognito user for tenant admin
+        cognito.admin_create_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            UserAttributes=[
+                {'Name': 'email', 'Value': body['email']},
+                {'Name': 'email_verified', 'Value': 'true'},
+                {'Name': 'custom:tenant_id', 'Value': tenant_id}
+            ],
+            TemporaryPassword=body['password'],
+            MessageAction='SUPPRESS'
+        )
+        
+        # Add to Admin group
+        cognito.admin_add_user_to_group(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            GroupName='Admin'
+        )
+        
+        # Set permanent password
+        cognito.admin_set_user_password(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            Password=body['password'],
+            Permanent=True
+        )
+        
+        # Get real UUID from Cognito
+        admin_user_response = cognito.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email']
+        )
+        
+        real_user_id = None
+        for attr in admin_user_response['UserAttributes']:
+            if attr['Name'] == 'sub':
+                real_user_id = attr['Value']
+                break
+        
+        if not real_user_id:
+            raise Exception('Could not extract user UUID from Cognito')
+        
+        # Update tenant record with admin info
+        tenants_table.update_item(
+            Key={'tenant_id': tenant_id},
+            UpdateExpression='SET admin_email = :email, admin_name = :name',
+            ExpressionAttributeValues={
+                ':email': body['email'],
+                ':name': body['name']
+            }
+        )
+        
+        # Create admin user record in DynamoDB
+        admin_user_item = {
+            'user_id': real_user_id,
+            'tenant_id': tenant_id,
+            'email': body['email'],
+            'name': body['name'],
+            'role': 'Admin',
+            'created_at': timestamp,
+            'xml_endpoint': '',
+            'xml_token': '',
+            'report_enabled': False,
+            'report_schedule': json.dumps({
+                'frequency': 'daily',
+                'time': '09:00'
+            })
+        }
+        
+        users_table.put_item(Item=admin_user_item)
+        
+        logger.info(f"Created admin user with UUID {real_user_id} for tenant {tenant_id}")
+        
+        return response(201, {
+            'message': 'Admin created successfully for tenant',
+            'tenant_id': tenant_id,
+            'admin_user_id': real_user_id
+        })
+        
+    except cognito.exceptions.UsernameExistsException:
+        return response(400, {'error': 'User with this email already exists'})
+    except Exception as e:
+        logger.error(f"Error creating tenant admin: {str(e)}")
         return response(500, {'error': str(e)})
 
 # ========================================
@@ -1026,6 +1075,138 @@ def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 # ========================================
+# SUPERADMIN MANAGEMENT
+# ========================================
+
+def create_superadmin(event: Dict, user: Dict) -> Dict:
+    """Create new superadmin user (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        required_fields = ['email', 'name', 'password']
+        for field in required_fields:
+            if not body.get(field):
+                return response(400, {'error': f'Missing required field: {field}'})
+        
+        timestamp = datetime.utcnow().isoformat()
+        
+        # Create Cognito user for superadmin with temporary password
+        # The user will be required to change password on first login
+        cognito.admin_create_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            UserAttributes=[
+                {'Name': 'email', 'Value': body['email']},
+                {'Name': 'email_verified', 'Value': 'true'},
+                {'Name': 'custom:tenant_id', 'Value': 'SYSTEM'}  # SuperAdmin has SYSTEM tenant_id
+            ],
+            TemporaryPassword=body['password'],
+            MessageAction='SUPPRESS'  # Don't send email, we'll provide password manually
+        )
+        
+        # Create SuperAdmin group if it doesn't exist, then add user to it
+        try:
+            # Try to get the group first
+            cognito.get_group(
+                UserPoolId=USER_POOL_ID,
+                GroupName='SuperAdmin'
+            )
+        except cognito.exceptions.ResourceNotFoundException:
+            # Group doesn't exist, create it
+            logger.info('Creating SuperAdmin group in Cognito')
+            cognito.create_group(
+                UserPoolId=USER_POOL_ID,
+                GroupName='SuperAdmin',
+                Description='SuperAdmin users with full system privileges'
+            )
+        
+        # Add to SuperAdmin group
+        cognito.admin_add_user_to_group(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email'],
+            GroupName='SuperAdmin'
+        )
+        
+        # NOTE: We do NOT set permanent password here
+        # The user will be required to change password on first login
+        # This is the standard Cognito flow for new users
+        
+        # Get real UUID from Cognito
+        superadmin_response = cognito.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=body['email']
+        )
+        
+        real_user_id = None
+        for attr in superadmin_response['UserAttributes']:
+            if attr['Name'] == 'sub':
+                real_user_id = attr['Value']
+                break
+        
+        if not real_user_id:
+            raise Exception('Could not extract user UUID from Cognito')
+        
+        # Create superadmin user record in DynamoDB
+        superadmin_user_item = {
+            'user_id': real_user_id,
+            'tenant_id': 'SYSTEM',  # SuperAdmin has SYSTEM tenant_id
+            'email': body['email'],
+            'name': body['name'],
+            'role': 'SuperAdmin',
+            'created_at': timestamp,
+            'xml_endpoint': '',
+            'xml_token': '',
+            'report_enabled': False,
+            'report_schedule': json.dumps({
+                'frequency': 'daily',
+                'time': '09:00'
+            })
+        }
+        
+        users_table.put_item(Item=superadmin_user_item)
+        
+        logger.info(f"Created superadmin user with UUID {real_user_id}")
+        
+        return response(201, {
+            'message': 'SuperAdmin created successfully',
+            'superadmin_id': real_user_id,
+            'email': body['email'],
+            'temporary_password': body['password'],  # Return password so SuperAdmin can provide it to new superadmin
+            'note': 'User must change password on first login'
+        })
+        
+    except cognito.exceptions.UsernameExistsException:
+        return response(400, {'error': 'User with this email already exists'})
+    except Exception as e:
+        logger.error(f"Error creating superadmin: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_superadmins(user: Dict) -> Dict:
+    """List all superadmins (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        # Query all users with role SuperAdmin
+        result = users_table.scan(
+            FilterExpression='#role = :role',
+            ExpressionAttributeNames={'#role': 'role'},
+            ExpressionAttributeValues={':role': 'SuperAdmin'}
+        )
+        
+        superadmins = result.get('Items', [])
+        
+        return response(200, {'superadmins': superadmins})
+        
+    except Exception as e:
+        logger.error(f"Error listing superadmins: {str(e)}")
+        return response(500, {'error': str(e)})
+
+# ========================================
 # REPORTS MANAGEMENT
 # ========================================
 
@@ -1180,11 +1361,15 @@ def lambda_handler(event, context):
             elif method == 'GET':
                 return list_users(event, user)
         
+        elif path.startswith('/tenants/') and path.endswith('/admin'):
+            if method == 'POST':
+                return create_tenant_admin(event, user)
+        
         elif path.startswith('/tenants/') and path.endswith('/reports'):
             if method == 'GET':
                 return list_tenant_reports(event, user)
         
-        elif path.startswith('/tenants/') and '/users' not in path and '/reports' not in path:
+        elif path.startswith('/tenants/') and '/users' not in path and '/reports' not in path and not path.endswith('/admin'):
             if method == 'GET':
                 return get_tenant(event, user)
         
@@ -1235,6 +1420,12 @@ def lambda_handler(event, context):
                 event['pathParameters']['reseller_id'] = reseller_id
                 if method == 'GET':
                     return get_reseller_tenants_list(event, user)
+        
+        elif path == '/superadmins':
+            if method == 'POST':
+                return create_superadmin(event, user)
+            elif method == 'GET':
+                return list_superadmins(user)
         
         return response(404, {'error': 'Not found'})
         
