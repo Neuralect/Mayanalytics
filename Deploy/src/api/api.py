@@ -1263,10 +1263,98 @@ def list_superadmins(user: Dict) -> Dict:
         
         superadmins = result.get('Items', [])
         
+        # For superadmins without created_at, try to get it from Cognito
+        for superadmin in superadmins:
+            if not superadmin.get('created_at'):
+                try:
+                    cognito_user = cognito.admin_get_user(
+                        UserPoolId=USER_POOL_ID,
+                        Username=superadmin['email']
+                    )
+                    # UserCreateDate is a datetime object from Cognito
+                    if 'UserCreateDate' in cognito_user:
+                        created_date = cognito_user['UserCreateDate']
+                        # Convert to ISO format string
+                        if hasattr(created_date, 'isoformat'):
+                            created_at_str = created_date.isoformat()
+                        else:
+                            created_at_str = created_date.strftime('%Y-%m-%dT%H:%M:%S.%f')
+                        
+                        # Update in DynamoDB for future requests
+                        try:
+                            users_table.update_item(
+                                Key={
+                                    'user_id': superadmin['user_id'],
+                                    'tenant_id': superadmin['tenant_id']
+                                },
+                                UpdateExpression='SET created_at = :ca',
+                                ExpressionAttributeValues={':ca': created_at_str}
+                            )
+                        except Exception as e:
+                            logger.warning(f"Could not update created_at for superadmin {superadmin['user_id']}: {str(e)}")
+                        
+                        # Set it in the response
+                        superadmin['created_at'] = created_at_str
+                except Exception as e:
+                    logger.warning(f"Could not get creation date from Cognito for {superadmin['email']}: {str(e)}")
+                    # Leave it as None if we can't get it
+        
         return response(200, {'superadmins': superadmins})
         
     except Exception as e:
         logger.error(f"Error listing superadmins: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def delete_superadmin(event: Dict, user: Dict) -> Dict:
+    """Delete superadmin (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        superadmin_id = event['pathParameters']['superadmin_id']
+        
+        # Prevent self-deletion
+        if user['user_id'] == superadmin_id:
+            return response(400, {'error': 'Cannot delete yourself'})
+        
+        # Verify superadmin exists
+        superadmin_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': superadmin_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        
+        if not superadmin_result.get('Items'):
+            return response(404, {'error': 'SuperAdmin not found'})
+        
+        superadmin = superadmin_result['Items'][0]
+        
+        # Verify it's actually a superadmin
+        if superadmin.get('role') != 'SuperAdmin':
+            return response(400, {'error': 'User is not a superadmin'})
+        
+        # Delete from Cognito
+        cognito.admin_delete_user(
+            UserPoolId=USER_POOL_ID,
+            Username=superadmin['email']
+        )
+        
+        # Delete from DynamoDB
+        users_table.delete_item(
+            Key={
+                'user_id': superadmin_id,
+                'tenant_id': 'SYSTEM'
+            }
+        )
+        
+        logger.info(f"Deleted superadmin {superadmin_id}")
+        
+        return response(200, {'message': 'SuperAdmin deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting superadmin: {str(e)}")
         return response(500, {'error': str(e)})
 
 # ========================================
@@ -1501,6 +1589,18 @@ def lambda_handler(event, context):
                 return create_superadmin(event, user)
             elif method == 'GET':
                 return list_superadmins(user)
+        
+        elif '/superadmins/' in path:
+            # Extract superadmin_id from path like /superadmins/{superadmin_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'superadmins':
+                superadmin_id = path_parts[2]
+                # Add superadmin_id to pathParameters for the function
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['superadmin_id'] = superadmin_id
+                if method == 'DELETE':
+                    return delete_superadmin(event, user)
         
         return response(404, {'error': 'Not found'})
         

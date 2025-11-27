@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { SuperAdmin } from '@/types';
 import { superadminsApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import CreateSuperAdminModal from './CreateSuperAdminModal';
 import SearchAndFilter from '../common/SearchAndFilter';
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function SuperAdminManagement({ superadmins, onRefresh }: Props) {
+  const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -20,6 +22,19 @@ export default function SuperAdminManagement({ superadmins, onRefresh }: Props) 
   const handleCreateSuccess = () => {
     setShowCreateModal(false);
     onRefresh();
+  };
+
+  const handleDelete = async (superadmin: SuperAdmin) => {
+    if (!confirm(`Sei sicuro di voler eliminare il superadmin "${superadmin.name || superadmin.email}"?`)) {
+      return;
+    }
+
+    try {
+      await superadminsApi.delete(superadmin.user_id);
+      onRefresh();
+    } catch (err: any) {
+      alert('Errore durante l\'eliminazione: ' + err.message);
+    }
   };
 
   // Filter and search logic
@@ -116,12 +131,13 @@ export default function SuperAdminManagement({ superadmins, onRefresh }: Props) 
                 <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Data Creazione</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {filteredSuperAdmins.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     {superadmins.length === 0
                       ? 'Nessun superadmin trovato'
                       : 'Nessun superadmin corrisponde ai filtri selezionati'}
@@ -166,6 +182,16 @@ export default function SuperAdminManagement({ superadmins, onRefresh }: Props) 
                           day: 'numeric',
                         });
                       })()}
+                    </td>
+                    <td className="px-4 py-3 border-b">
+                      {user?.user_id !== superadmin.user_id && (
+                        <button
+                          onClick={() => handleDelete(superadmin)}
+                          className="btn btn-small btn-danger"
+                        >
+                          Elimina
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

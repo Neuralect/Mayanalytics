@@ -545,6 +545,20 @@ Resources:
             Path: /superadmins
             Method: get
             RestApiId: !Ref ApiGateway
+        SuperAdminIdOptions:
+          Type: Api
+          Properties:
+            Path: /superadmins/{superadmin_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        DeleteSuperAdmin:
+          Type: Api
+          Properties:
+            Path: /superadmins/{superadmin_id}
+            Method: delete
+            RestApiId: !Ref ApiGateway
         TestReportOptions:
           Type: Api
           Properties:

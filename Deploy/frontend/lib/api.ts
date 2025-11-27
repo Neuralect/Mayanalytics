@@ -88,6 +88,7 @@ export const resellersApi = {
 export const superadminsApi = {
   list: () => apiCall<{ superadmins: any[] }>('/superadmins'),
   create: (data: any) => apiCall('/superadmins', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (superadminId: string) => apiCall(`/superadmins/${superadminId}`, { method: 'DELETE' }),
 };
 
 // Reports
