@@ -133,13 +133,39 @@ export default function SuperAdminManagement({ superadmins, onRefresh }: Props) 
                     <td className="px-4 py-3 border-b">{superadmin.name || 'N/A'}</td>
                     <td className="px-4 py-3 border-b">{superadmin.email}</td>
                     <td className="px-4 py-3 border-b">
-                      {superadmin.created_at
-                        ? new Date(superadmin.created_at).toLocaleDateString('it-IT', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : 'N/A'}
+                      {(() => {
+                        if (!superadmin.created_at) return 'N/A';
+                        
+                        // Try to parse the date - handle different formats
+                        let date: Date;
+                        const dateValue = superadmin.created_at;
+                        
+                        // If it's a number (timestamp), convert it
+                        if (typeof dateValue === 'number') {
+                          date = new Date(dateValue);
+                        } else if (typeof dateValue === 'string') {
+                          // Try parsing as ISO string
+                          date = new Date(dateValue);
+                          // If that fails, try as timestamp string
+                          if (isNaN(date.getTime()) && !isNaN(Number(dateValue))) {
+                            date = new Date(Number(dateValue));
+                          }
+                        } else {
+                          return 'N/A';
+                        }
+                        
+                        // Check if date is valid
+                        if (isNaN(date.getTime())) {
+                          console.warn('Invalid date for superadmin:', superadmin.email, 'date value:', dateValue);
+                          return 'N/A';
+                        }
+                        
+                        return date.toLocaleDateString('it-IT', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                      })()}
                     </td>
                   </tr>
                 ))
