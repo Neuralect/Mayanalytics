@@ -39,6 +39,19 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
     setShowViewModal(true);
   };
 
+  const handleDelete = async (reseller: Reseller) => {
+    if (!confirm(`Sei sicuro di voler eliminare il reseller "${reseller.name || reseller.email}"?`)) {
+      return;
+    }
+
+    try {
+      await resellersApi.delete(reseller.user_id);
+      onRefresh();
+    } catch (err: any) {
+      alert('Errore durante l\'eliminazione: ' + err.message);
+    }
+  };
+
   // Filter and search logic
   const filteredResellers = useMemo(() => {
     let filtered = [...resellers];
@@ -205,6 +218,12 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
                           className="btn btn-small bg-green-500 hover:bg-green-600 text-white"
                         >
                           Assegna Tenant
+                        </button>
+                        <button
+                          onClick={() => handleDelete(reseller)}
+                          className="btn btn-small btn-danger"
+                        >
+                          Elimina
                         </button>
                       </div>
                     </td>

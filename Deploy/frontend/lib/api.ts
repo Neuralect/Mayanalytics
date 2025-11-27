@@ -75,6 +75,7 @@ export const usersApi = {
 export const resellersApi = {
   list: () => apiCall<{ resellers: any[] }>('/resellers'),
   create: (data: any) => apiCall('/resellers', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (resellerId: string) => apiCall(`/resellers/${resellerId}`, { method: 'DELETE' }),
   getTenants: (resellerId: string) => 
     apiCall<{ tenants: any[]; reseller_id: string; count: number }>(`/resellers/${resellerId}/tenants`),
   assignTenant: (data: any) => 
