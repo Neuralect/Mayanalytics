@@ -71,6 +71,17 @@ export const usersApi = {
   delete: (userId: string) => apiCall(`/users/${userId}`, { method: 'DELETE' }),
 };
 
+// Connectors
+export const connectorsApi = {
+  list: (userId: string) => apiCall<{ connectors: any[] }>(`/users/${userId}/connectors`),
+  create: (userId: string, data: any) => 
+    apiCall(`/users/${userId}/connectors`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (userId: string, connectorId: string, data: any) => 
+    apiCall(`/users/${userId}/connectors/${connectorId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (userId: string, connectorId: string) => 
+    apiCall(`/users/${userId}/connectors/${connectorId}`, { method: 'DELETE' }),
+};
+
 // Resellers
 export const resellersApi = {
   list: () => apiCall<{ resellers: any[] }>('/resellers'),

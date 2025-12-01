@@ -12,12 +12,12 @@ interface Props {
 }
 
 export default function CreateUserModal({ tenantId, onClose, onSuccess }: Props) {
-  const [formData, setFormData] = useState<CreateUserInput>({
+  const [formData, setFormData] = useState<CreateUserInput & { connector_name?: string }>({
     name: '',
     email: '',
     xml_endpoint: '',
     xml_token: '',
-    report_email: '',
+    connector_name: '',
   });
   const [schedule, setSchedule] = useState<ReportSchedule>({
     frequency: 'daily',
@@ -44,11 +44,20 @@ export default function CreateUserModal({ tenantId, onClose, onSuccess }: Props)
         scheduleData.day_of_month = parseInt((document.getElementById('userMonthlyDay') as HTMLSelectElement)?.value || '1');
       }
 
-      await usersApi.create(tenantId, {
-        ...formData,
-        report_schedule: JSON.stringify(scheduleData),
-        report_email: formData.report_email || '',
-      });
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+      };
+
+      // If XML endpoint provided, include connector data
+      if (formData.xml_endpoint) {
+        payload.xml_endpoint = formData.xml_endpoint;
+        payload.xml_token = formData.xml_token || '';
+        payload.connector_name = formData.connector_name || 'Report Principale';
+        payload.report_schedule = JSON.stringify(scheduleData);
+      }
+
+      await usersApi.create(tenantId, payload);
       onSuccess();
     } catch (err: any) {
       setError(err.message || 'Errore nella creazione dell\'utente');
@@ -82,7 +91,7 @@ export default function CreateUserModal({ tenantId, onClose, onSuccess }: Props)
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Email</label>
+            <label className="block text-gray-700 font-medium mb-2">Email per Report</label>
             <input
               type="email"
               value={formData.email}
@@ -90,103 +99,114 @@ export default function CreateUserModal({ tenantId, onClose, onSuccess }: Props)
               required
               className="input"
               disabled={loading}
+              placeholder="supervisore@azienda.com"
             />
             <small className="text-gray-500 text-sm mt-1 block">
-              Email per login (deve essere univoca)
+              Email dove ricevere i report automatici. Può essere duplicata tra più utenti.
             </small>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Email per Report (Opzionale)</label>
-            <input
-              type="email"
-              value={formData.report_email}
-              onChange={(e) => setFormData({ ...formData, report_email: e.target.value })}
-              className="input"
-              disabled={loading}
-              placeholder="report@example.com"
-            />
-            <small className="text-gray-500 text-sm mt-1 block">
-              Se vuoto, usa l'email principale. Può essere duplicata tra più utenti.
-            </small>
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 mb-2">
+              <strong>Nota:</strong> L'utente riceverà solo email automatiche. Non può accedere al sistema.
+            </p>
+            <p className="text-sm text-blue-700">
+              I connettori XML possono essere aggiunti dopo la creazione dell'utente.
+            </p>
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">XML Endpoint URL</label>
+            <label className="block text-gray-700 font-medium mb-2">XML Endpoint URL (Opzionale)</label>
             <input
               type="url"
               value={formData.xml_endpoint}
               onChange={(e) => setFormData({ ...formData, xml_endpoint: e.target.value })}
-              required
               className="input"
               disabled={loading}
               placeholder="https://api.example.com/data"
             />
+            <small className="text-gray-500 text-sm mt-1 block">
+              Puoi aggiungere connettori XML dopo la creazione dell'utente.
+            </small>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">XML Token (Opzionale)</label>
-            <input
-              type="text"
-              value={formData.xml_token}
-              onChange={(e) => setFormData({ ...formData, xml_token: e.target.value })}
-              className="input"
-              disabled={loading}
-              placeholder="Bearer token o auth key"
-            />
-          </div>
+          {formData.xml_endpoint && (
+            <>
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">Nome Connettore</label>
+                <input
+                  type="text"
+                  value={formData.connector_name || ''}
+                  onChange={(e) => setFormData({ ...formData, connector_name: e.target.value })}
+                  className="input"
+                  disabled={loading}
+                  placeholder="Report IVR Principale"
+                />
+              </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Periodicità Report</label>
-            <select
-              value={schedule.frequency}
-              onChange={(e) => setSchedule({ ...schedule, frequency: e.target.value as any })}
-              required
-              className="input"
-              disabled={loading}
-            >
-              <option value="daily">Giornaliero</option>
-              <option value="weekly">Settimanale</option>
-              <option value="monthly">Mensile</option>
-            </select>
-          </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">XML Token (Opzionale)</label>
+                <input
+                  type="text"
+                  value={formData.xml_token}
+                  onChange={(e) => setFormData({ ...formData, xml_token: e.target.value })}
+                  className="input"
+                  disabled={loading}
+                  placeholder="Bearer token o auth key"
+                />
+              </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Ora Invio Report</label>
-            <input
-              type="time"
-              value={schedule.time}
-              onChange={(e) => setSchedule({ ...schedule, time: e.target.value })}
-              required
-              className="input"
-              disabled={loading}
-            />
-          </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">Periodicità Report</label>
+                <select
+                  value={schedule.frequency}
+                  onChange={(e) => setSchedule({ ...schedule, frequency: e.target.value as any })}
+                  className="input"
+                  disabled={loading}
+                >
+                  <option value="daily">Giornaliero</option>
+                  <option value="weekly">Settimanale</option>
+                  <option value="monthly">Mensile</option>
+                </select>
+              </div>
 
-          {schedule.frequency === 'weekly' && (
-            <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Giorno della Settimana</label>
-              <select id="userWeeklyDay" className="input" disabled={loading}>
-                <option value="1">Lunedì</option>
-                <option value="2">Martedì</option>
-                <option value="3">Mercoledì</option>
-                <option value="4">Giovedì</option>
-                <option value="5">Venerdì</option>
-                <option value="6">Sabato</option>
-                <option value="0">Domenica</option>
-              </select>
-            </div>
-          )}
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">Ora Invio Report</label>
+                <input
+                  type="time"
+                  value={schedule.time}
+                  onChange={(e) => setSchedule({ ...schedule, time: e.target.value })}
+                  className="input"
+                  disabled={loading}
+                />
+              </div>
 
-          {schedule.frequency === 'monthly' && (
-            <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Giorno del Mese</label>
-              <select id="userMonthlyDay" className="input" disabled={loading}>
-                {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                  <option key={day} value={day}>{day}</option>
-                ))}
-              </select>
-            </div>
+              {schedule.frequency === 'weekly' && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">Giorno della Settimana</label>
+                  <select id="userWeeklyDay" className="input" disabled={loading}>
+                    <option value="1">Lunedì</option>
+                    <option value="2">Martedì</option>
+                    <option value="3">Mercoledì</option>
+                    <option value="4">Giovedì</option>
+                    <option value="5">Venerdì</option>
+                    <option value="6">Sabato</option>
+                    <option value="0">Domenica</option>
+                  </select>
+                </div>
+              )}
+
+              {schedule.frequency === 'monthly' && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2">Giorno del Mese</label>
+                  <select id="userMonthlyDay" className="input" disabled={loading}>
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
           )}
 
           <div className="flex gap-2">

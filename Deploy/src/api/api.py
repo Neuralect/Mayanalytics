@@ -289,7 +289,11 @@ def update_profile(event: Dict, user: Dict) -> Dict:
 # ========================================
 
 def create_user(event: Dict, user: Dict) -> Dict:
-    """Create new user within tenant (Admin, Reseller, or SuperAdmin only)"""
+    """Create new user within tenant (Admin, Reseller, or SuperAdmin only)
+    
+    NOTE: End-users (role='User') do NOT have Cognito accounts.
+    They only receive email reports. No login required.
+    """
     if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
         return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
     
@@ -306,82 +310,70 @@ def create_user(event: Dict, user: Dict) -> Dict:
         
         body = json.loads(event.get('body', '{}'))
         
-        # Validate required fields
-        required_fields = ['name', 'email', 'xml_endpoint']
+        # Validate required fields - SIMPLIFIED: only name and email required
+        required_fields = ['name', 'email']
         for field in required_fields:
             if not body.get(field):
                 return response(400, {'error': f'Missing required field: {field}'})
         
         timestamp = datetime.utcnow().isoformat()
-        temp_password = 'TempPass123!'  # Will be changed on first login
         
-        # Create Cognito user
-        cognito.admin_create_user(
-            UserPoolId=USER_POOL_ID,
-            Username=body['email'],
-            UserAttributes=[
-                {'Name': 'email', 'Value': body['email']},
-                {'Name': 'email_verified', 'Value': 'true'},
-                {'Name': 'custom:tenant_id', 'Value': tenant_id}
-            ],
-            TemporaryPassword=temp_password,
-            MessageAction='SUPPRESS'
+        # Generate UUID locally (NO Cognito for end-users)
+        user_id = str(uuid.uuid4())
+        
+        # Check if email already exists in this tenant
+        existing_result = users_table.query(
+            IndexName='email-index',
+            KeyConditionExpression='email = :email',
+            ExpressionAttributeValues={':email': body['email']}
         )
         
-        # Set permanent password (optional, or let user change on first login)
-        if body.get('password'):
-            cognito.admin_set_user_password(
-                UserPoolId=USER_POOL_ID,
-                Username=body['email'],
-                Password=body['password'],
-                Permanent=True
-            )
+        # Check if any existing user with this email in this tenant
+        for existing_user in existing_result.get('Items', []):
+            if existing_user.get('tenant_id') == tenant_id:
+                return response(400, {'error': 'User with this email already exists in this tenant'})
         
-        # Get real UUID from Cognito
-        user_response = cognito.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=body['email']
-        )
+        # Create user record in DynamoDB (NO Cognito)
+        # Use report_email if provided, otherwise use email
+        report_email = body.get('report_email', '') or body['email']
         
-        real_user_id = None
-        for attr in user_response['UserAttributes']:
-            if attr['Name'] == 'sub':
-                real_user_id = attr['Value']
-                break
-        
-        if not real_user_id:
-            raise Exception('Could not extract user UUID from Cognito')
-        
-        # Create user record in DynamoDB
         user_item = {
-            'user_id': real_user_id,
+            'user_id': user_id,
             'tenant_id': tenant_id,
             'email': body['email'],
             'name': body['name'],
             'role': 'User',
             'created_at': timestamp,
-            'xml_endpoint': body['xml_endpoint'],
-            'xml_token': body.get('xml_token', ''),
-            'report_enabled': True,  # Enable reports by default
-            'report_schedule': body.get('report_schedule', json.dumps({
-                'frequency': 'daily',
-                'time': '09:00'
-            })),
-            'report_email': body.get('report_email', '')  # Optional: email for reports (can be duplicated)
+            'report_email': report_email,
+            # Default: no connectors, will be added separately
+            'connectors': body.get('connectors', [])  # Array of XML connectors
         }
+        
+        # If xml_endpoint provided (backward compatibility), create first connector
+        if body.get('xml_endpoint'):
+            connector = {
+                'connector_id': str(uuid.uuid4()),
+                'name': body.get('connector_name', 'Report Principale'),
+                'xml_endpoint': body['xml_endpoint'],
+                'xml_token': body.get('xml_token', ''),
+                'report_enabled': True,
+                'report_schedule': body.get('report_schedule', json.dumps({
+                    'frequency': 'daily',
+                    'time': '09:00'
+                }))
+            }
+            user_item['connectors'] = [connector]
         
         users_table.put_item(Item=user_item)
         
-        logger.info(f"Created user {real_user_id} for tenant {tenant_id}")
+        logger.info(f"Created end-user {user_id} for tenant {tenant_id} (NO Cognito account)")
         
         return response(201, {
-            'message': 'User created successfully',
-            'user_id': real_user_id,
-            'temporary_password': temp_password if not body.get('password') else None
+            'message': 'User created successfully (email-only, no login)',
+            'user_id': user_id,
+            'email': body['email']
         })
         
-    except cognito.exceptions.UsernameExistsException:
-        return response(400, {'error': 'User with this email already exists'})
     except Exception as e:
         logger.error(f"Error creating user: {str(e)}")
         return response(500, {'error': str(e)})
@@ -541,11 +533,17 @@ def delete_user(event: Dict, user: Dict) -> Dict:
         if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
             return response(403, {'error': 'Unauthorized: Cannot delete users from tenants not assigned to you'})
         
-        # Delete from Cognito
-        cognito.admin_delete_user(
-            UserPoolId=USER_POOL_ID,
-            Username=target_user['email']
-        )
+        # Delete from Cognito ONLY if user has Cognito account (Admin/SuperAdmin/Reseller)
+        # End-users (role='User') don't have Cognito accounts
+        if target_user.get('role') != 'User':
+            try:
+                cognito.admin_delete_user(
+                    UserPoolId=USER_POOL_ID,
+                    Username=target_user['email']
+                )
+                logger.info(f"Deleted Cognito account for user {user_id}")
+            except Exception as e:
+                logger.warning(f"Could not delete Cognito account (may not exist): {str(e)}")
         
         # Delete from DynamoDB
         users_table.delete_item(
@@ -559,6 +557,255 @@ def delete_user(event: Dict, user: Dict) -> Dict:
         
     except Exception as e:
         logger.error(f"Error deleting user: {str(e)}")
+        return response(500, {'error': str(e)})
+
+# ========================================
+# CONNECTOR MANAGEMENT
+# ========================================
+
+def create_connector(event: Dict, user: Dict) -> Dict:
+    """Add connector to user (Admin, Reseller, or SuperAdmin only)"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
+    
+    try:
+        user_id = event['pathParameters']['user_id']
+        
+        # Find user
+        result = users_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': user_id}
+        )
+        
+        if not result.get('Items'):
+            return response(404, {'error': 'User not found'})
+        
+        target_user = result['Items'][0]
+        
+        # Authorization check
+        if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
+            return response(403, {'error': 'Unauthorized: Cannot manage users from other tenants'})
+        
+        if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized: Cannot manage users from tenants not assigned to you'})
+        
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        if not body.get('xml_endpoint'):
+            return response(400, {'error': 'Missing required field: xml_endpoint'})
+        
+        # Create connector
+        connector = {
+            'connector_id': str(uuid.uuid4()),
+            'name': body.get('name', 'Report'),
+            'xml_endpoint': body['xml_endpoint'],
+            'xml_token': body.get('xml_token', ''),
+            'report_enabled': body.get('report_enabled', True),
+            'report_schedule': body.get('report_schedule', json.dumps({
+                'frequency': 'daily',
+                'time': '09:00'
+            }))
+        }
+        
+        # Get existing connectors or create new array
+        connectors = target_user.get('connectors', [])
+        connectors.append(connector)
+        
+        # Update user with new connector
+        users_table.update_item(
+            Key={
+                'user_id': user_id,
+                'tenant_id': target_user['tenant_id']
+            },
+            UpdateExpression='SET connectors = :connectors',
+            ExpressionAttributeValues={':connectors': connectors}
+        )
+        
+        logger.info(f"Added connector {connector['connector_id']} to user {user_id}")
+        
+        return response(201, {
+            'message': 'Connector added successfully',
+            'connector': connector
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating connector: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_connectors(event: Dict, user: Dict) -> Dict:
+    """List connectors for a user"""
+    try:
+        user_id = event['pathParameters']['user_id']
+        
+        # Find user
+        result = users_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': user_id}
+        )
+        
+        if not result.get('Items'):
+            return response(404, {'error': 'User not found'})
+        
+        target_user = result['Items'][0]
+        
+        # Authorization check
+        if not is_super_admin(user) and not is_reseller(user):
+            if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
+                return response(403, {'error': 'Unauthorized'})
+        
+        if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized'})
+        
+        connectors = target_user.get('connectors', [])
+        
+        # Backward compatibility: if old format (xml_endpoint on user), convert to connector
+        if not connectors and target_user.get('xml_endpoint'):
+            connectors = [{
+                'connector_id': 'legacy',
+                'name': 'Report Principale',
+                'xml_endpoint': target_user.get('xml_endpoint', ''),
+                'xml_token': target_user.get('xml_token', ''),
+                'report_enabled': target_user.get('report_enabled', True),
+                'report_schedule': target_user.get('report_schedule', json.dumps({
+                    'frequency': 'daily',
+                    'time': '09:00'
+                }))
+            }]
+        
+        return response(200, {'connectors': connectors})
+        
+    except Exception as e:
+        logger.error(f"Error listing connectors: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def update_connector(event: Dict, user: Dict) -> Dict:
+    """Update connector for a user"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
+    
+    try:
+        user_id = event['pathParameters']['user_id']
+        connector_id = event['pathParameters']['connector_id']
+        
+        # Find user
+        result = users_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': user_id}
+        )
+        
+        if not result.get('Items'):
+            return response(404, {'error': 'User not found'})
+        
+        target_user = result['Items'][0]
+        
+        # Authorization check
+        if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
+            return response(403, {'error': 'Unauthorized'})
+        
+        if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized'})
+        
+        body = json.loads(event.get('body', '{}'))
+        
+        # Get connectors
+        connectors = target_user.get('connectors', [])
+        
+        # Find connector to update
+        connector_index = None
+        for i, conn in enumerate(connectors):
+            if conn.get('connector_id') == connector_id:
+                connector_index = i
+                break
+        
+        if connector_index is None:
+            return response(404, {'error': 'Connector not found'})
+        
+        # Update connector fields
+        if 'name' in body:
+            connectors[connector_index]['name'] = body['name']
+        if 'xml_endpoint' in body:
+            connectors[connector_index]['xml_endpoint'] = body['xml_endpoint']
+        if 'xml_token' in body:
+            connectors[connector_index]['xml_token'] = body.get('xml_token', '')
+        if 'report_enabled' in body:
+            connectors[connector_index]['report_enabled'] = body['report_enabled']
+        if 'report_schedule' in body:
+            connectors[connector_index]['report_schedule'] = body['report_schedule']
+        
+        # Update user
+        users_table.update_item(
+            Key={
+                'user_id': user_id,
+                'tenant_id': target_user['tenant_id']
+            },
+            UpdateExpression='SET connectors = :connectors',
+            ExpressionAttributeValues={':connectors': connectors}
+        )
+        
+        logger.info(f"Updated connector {connector_id} for user {user_id}")
+        
+        return response(200, {
+            'message': 'Connector updated successfully',
+            'connector': connectors[connector_index]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating connector: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def delete_connector(event: Dict, user: Dict) -> Dict:
+    """Delete connector from user"""
+    if not is_admin(user) and not is_super_admin(user) and not is_reseller(user):
+        return response(403, {'error': 'Unauthorized: Admin, Reseller, or SuperAdmin only'})
+    
+    try:
+        user_id = event['pathParameters']['user_id']
+        connector_id = event['pathParameters']['connector_id']
+        
+        # Find user
+        result = users_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': user_id}
+        )
+        
+        if not result.get('Items'):
+            return response(404, {'error': 'User not found'})
+        
+        target_user = result['Items'][0]
+        
+        # Authorization check
+        if is_admin(user) and user['tenant_id'] != target_user['tenant_id']:
+            return response(403, {'error': 'Unauthorized'})
+        
+        if is_reseller(user) and not can_reseller_access_tenant(user, target_user['tenant_id']):
+            return response(403, {'error': 'Unauthorized'})
+        
+        # Get connectors
+        connectors = target_user.get('connectors', [])
+        
+        # Remove connector
+        connectors = [c for c in connectors if c.get('connector_id') != connector_id]
+        
+        if len(connectors) == len(target_user.get('connectors', [])):
+            return response(404, {'error': 'Connector not found'})
+        
+        # Update user
+        users_table.update_item(
+            Key={
+                'user_id': user_id,
+                'tenant_id': target_user['tenant_id']
+            },
+            UpdateExpression='SET connectors = :connectors',
+            ExpressionAttributeValues={':connectors': connectors}
+        )
+        
+        logger.info(f"Deleted connector {connector_id} from user {user_id}")
+        
+        return response(200, {'message': 'Connector deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting connector: {str(e)}")
         return response(500, {'error': str(e)})
 
 # ========================================
@@ -1631,7 +1878,35 @@ def lambda_handler(event, context):
             if method == 'GET':
                 return list_user_reports(event, user)
         
-        elif path.startswith('/users/') and not path.endswith('/reports'):
+        elif path.startswith('/users/') and '/connectors/' in path and not path.endswith('/connectors'):
+            # Extract user_id and connector_id from path like /users/{user_id}/connectors/{connector_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 5 and path_parts[1] == 'users' and path_parts[3] == 'connectors':
+                user_id = path_parts[2]
+                connector_id = path_parts[4]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['user_id'] = user_id
+                event['pathParameters']['connector_id'] = connector_id
+                if method == 'PUT':
+                    return update_connector(event, user)
+                elif method == 'DELETE':
+                    return delete_connector(event, user)
+        
+        elif path.startswith('/users/') and path.endswith('/connectors'):
+            # Extract user_id from path like /users/{user_id}/connectors
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'users' and path_parts[3] == 'connectors':
+                user_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['user_id'] = user_id
+                if method == 'POST':
+                    return create_connector(event, user)
+                elif method == 'GET':
+                    return list_connectors(event, user)
+        
+        elif path.startswith('/users/') and not path.endswith('/reports') and '/connectors' not in path:
             if method == 'GET':
                 return get_user(event, user)
             elif method == 'PUT':

@@ -415,6 +415,46 @@ Resources:
             Path: /users/{user_id}/reports
             Method: get
             RestApiId: !Ref ApiGateway
+        UserConnectorsOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        ListConnectors:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors
+            Method: get
+            RestApiId: !Ref ApiGateway
+        CreateConnector:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors
+            Method: post
+            RestApiId: !Ref ApiGateway
+        UserConnectorIdOptions:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors/{connector_id}
+            Method: options
+            RestApiId: !Ref ApiGateway
+            Auth:
+              Authorizer: NONE
+        UpdateConnector:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors/{connector_id}
+            Method: put
+            RestApiId: !Ref ApiGateway
+        DeleteConnector:
+          Type: Api
+          Properties:
+            Path: /users/{user_id}/connectors/{connector_id}
+            Method: delete
+            RestApiId: !Ref ApiGateway
         ReportsOptions:
           Type: Api
           Properties:

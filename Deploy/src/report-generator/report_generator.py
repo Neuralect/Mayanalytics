@@ -4045,24 +4045,49 @@ def should_generate_report_now(user: Dict) -> bool:
         return False
 
 def get_scheduled_users() -> List[Dict]:
-    """Get users who should receive reports now"""
+    """Get users who should receive reports now
+    
+    Supports both old format (xml_endpoint directly on user) and new format (connectors array)
+    """
     try:
         logger.info("🔍 Checking for scheduled users...")
         
-        # Scan users with reports enabled
-        response = users_table.scan(
-            FilterExpression='report_enabled = :enabled',
-            ExpressionAttributeValues={':enabled': True}
-        )
+        # Scan all users (end-users don't have report_enabled field, they use connectors)
+        response = users_table.scan()
         
         users = response.get('Items', [])
         scheduled_users = []
         
         for user in users:
-            if should_generate_report_now(user):
-                scheduled_users.append(user)
+            # Skip non-end-users (Admin/SuperAdmin/Reseller)
+            if user.get('role') != 'User':
+                continue
+            
+            # Check if user has connectors with enabled reports
+            connectors = user.get('connectors', [])
+            
+            # Backward compatibility: check old format (xml_endpoint directly on user)
+            if not connectors and user.get('xml_endpoint'):
+                # Old format - treat as single connector
+                if should_generate_report_now(user):
+                    scheduled_users.append(user)
+            else:
+                # New format - check each connector
+                for connector in connectors:
+                    if connector.get('report_enabled', True):
+                        # Create a user-like dict for this connector
+                        connector_user = {
+                            **user,
+                            'xml_endpoint': connector.get('xml_endpoint', ''),
+                            'xml_token': connector.get('xml_token', ''),
+                            'report_schedule': connector.get('report_schedule', user.get('report_schedule', '{}')),
+                            'connector_id': connector.get('connector_id'),
+                            'connector_name': connector.get('name', 'Report')
+                        }
+                        if should_generate_report_now(connector_user):
+                            scheduled_users.append(connector_user)
         
-        logger.info(f"📅 Found {len(scheduled_users)} users scheduled for reports")
+        logger.info(f"📅 Found {len(scheduled_users)} connectors scheduled for reports")
         return scheduled_users
         
     except Exception as e:
