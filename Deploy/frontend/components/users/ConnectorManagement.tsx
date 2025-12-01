@@ -24,6 +24,7 @@ export default function ConnectorManagement({ userId, onUpdate }: Props) {
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     loadConnectors();
@@ -72,6 +73,21 @@ export default function ConnectorManagement({ userId, onUpdate }: Props) {
     handleClose();
   };
 
+  const handleMenuToggle = (connectorId: string) => {
+    setOpenMenuId(openMenuId === connectorId ? null : connectorId);
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId && !(event.target as HTMLElement).closest('.connector-menu')) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
+
   if (loading) {
     return <div className="text-center py-4 text-gray-500">Caricamento connettori...</div>;
   }
@@ -101,41 +117,75 @@ export default function ConnectorManagement({ userId, onUpdate }: Props) {
               : { frequency: 'daily', time: '09:00' };
             
             return (
-              <div key={connector.connector_id} className="border rounded-lg p-4 bg-white">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h5 className="font-semibold text-gray-800">{connector.name}</h5>
-                      <span className={`badge ${connector.report_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                        {connector.report_enabled ? 'Attivo' : 'Disattivo'}
-                      </span>
+              <div key={connector.connector_id} className="border rounded-lg p-4 bg-white relative overflow-hidden">
+                {/* Menu a 3 punti - posizionato in alto a destra */}
+                <div className="connector-menu absolute top-4 right-4">
+                  <button
+                    onClick={() => handleMenuToggle(connector.connector_id)}
+                    className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label="Menu opzioni"
+                  >
+                    <svg 
+                      className="w-5 h-5 text-gray-600" 
+                      fill="currentColor" 
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  {openMenuId === connector.connector_id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            handleEdit(connector);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Modifica
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDelete(connector.connector_id);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Elimina
+                        </button>
+                      </div>
                     </div>
+                  )}
+                </div>
+
+                {/* Contenuto della card - con padding a destra per il menu */}
+                <div className="pr-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h5 className="font-semibold text-gray-800">{connector.name}</h5>
+                    <span className={`badge ${connector.report_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {connector.report_enabled ? 'Attivo' : 'Disattivo'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1 break-words">
+                    <strong>Endpoint:</strong> <span className="break-all">{connector.xml_endpoint}</span>
+                  </p>
+                  {connector.xml_token && (
                     <p className="text-sm text-gray-600 mb-1">
-                      <strong>Endpoint:</strong> {connector.xml_endpoint}
+                      <strong>Token:</strong> {connector.xml_token.substring(0, 20)}...
                     </p>
-                    {connector.xml_token && (
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>Token:</strong> {connector.xml_token.substring(0, 20)}...
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-600">
-                      <strong>Schedulazione:</strong> {schedule.frequency === 'daily' ? 'Giornaliero' : schedule.frequency === 'weekly' ? 'Settimanale' : 'Mensile'} alle {schedule.time}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => handleEdit(connector)}
-                      className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      Modifica
-                    </button>
-                    <button
-                      onClick={() => handleDelete(connector.connector_id)}
-                      className="btn btn-small btn-danger"
-                    >
-                      Elimina
-                    </button>
-                  </div>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    <strong>Schedulazione:</strong> {schedule.frequency === 'daily' ? 'Giornaliero' : schedule.frequency === 'weekly' ? 'Settimanale' : 'Mensile'} alle {schedule.time}
+                  </p>
                 </div>
               </div>
             );
