@@ -4080,6 +4080,7 @@ def get_scheduled_users() -> List[Dict]:
                             **user,
                             'xml_endpoint': connector.get('xml_endpoint', ''),
                             'xml_token': connector.get('xml_token', ''),
+                            'report_enabled': connector.get('report_enabled', True),  # Use connector's report_enabled, not user's
                             'report_schedule': connector.get('report_schedule', user.get('report_schedule', '{}')),
                             'connector_id': connector.get('connector_id'),
                             'connector_name': connector.get('name', 'Report')

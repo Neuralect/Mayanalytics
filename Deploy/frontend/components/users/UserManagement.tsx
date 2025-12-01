@@ -47,7 +47,8 @@ export default function UserManagement({ users, tenantId, onRefresh }: Props) {
       filtered = filtered.filter(
         (user) =>
           user.name?.toLowerCase().includes(searchLower) ||
-          user.email.toLowerCase().includes(searchLower)
+          user.email.toLowerCase().includes(searchLower) ||
+          (user.report_email && user.report_email.toLowerCase().includes(searchLower))
       );
     }
 
@@ -103,7 +104,7 @@ export default function UserManagement({ users, tenantId, onRefresh }: Props) {
                   return (
                     <tr key={user.user_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 border-b">{user.name || 'N/A'}</td>
-                      <td className="px-4 py-3 border-b">{user.email}</td>
+                      <td className="px-4 py-3 border-b">{user.report_email || user.email}</td>
                       <td className="px-4 py-3 border-b">
                         <span className="badge bg-blue-100 text-blue-800">
                           {connectors.length} connettore{connectors.length !== 1 ? 'i' : ''}

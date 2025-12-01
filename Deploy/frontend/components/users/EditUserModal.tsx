@@ -14,7 +14,7 @@ interface Props {
 export default function EditUserModal({ user, onClose, onSuccess }: Props) {
   const [formData, setFormData] = useState({
     name: user.name || '',
-    email: user.email,
+    report_email: user.report_email || user.email,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,6 +27,7 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
     try {
       await usersApi.update(user.user_id, {
         name: formData.name,
+        report_email: formData.report_email,
       });
       onSuccess();
     } catch (err: any) {
@@ -61,15 +62,18 @@ export default function EditUserModal({ user, onClose, onSuccess }: Props) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">Email</label>
+            <label className="block text-gray-700 font-medium mb-2">Email per Report</label>
             <input
               type="email"
-              value={formData.email}
-              disabled
-              className="input bg-gray-100"
+              value={formData.report_email}
+              onChange={(e) => setFormData({ ...formData, report_email: e.target.value })}
+              required
+              className="input"
+              disabled={loading}
+              placeholder="email@example.com"
             />
             <small className="text-gray-500 text-sm mt-1 block">
-              Email per ricevere i report automatici (non modificabile)
+              Email dove ricevere i report automatici. Può essere modificata.
             </small>
           </div>
 
