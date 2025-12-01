@@ -321,17 +321,8 @@ def create_user(event: Dict, user: Dict) -> Dict:
         # Generate UUID locally (NO Cognito for end-users)
         user_id = str(uuid.uuid4())
         
-        # Check if email already exists in this tenant
-        existing_result = users_table.query(
-            IndexName='email-index',
-            KeyConditionExpression='email = :email',
-            ExpressionAttributeValues={':email': body['email']}
-        )
-        
-        # Check if any existing user with this email in this tenant
-        for existing_user in existing_result.get('Items', []):
-            if existing_user.get('tenant_id') == tenant_id:
-                return response(400, {'error': 'User with this email already exists in this tenant'})
+        # NOTE: Email can be duplicated across users (multiple users can receive reports at same email)
+        # No uniqueness check needed - users are identified by user_id, not email
         
         # Create user record in DynamoDB (NO Cognito)
         # Use report_email if provided, otherwise use email
