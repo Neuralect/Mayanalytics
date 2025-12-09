@@ -1809,6 +1809,15 @@ def create_ivr_analysis_prompt(data: Dict) -> str:
     return f"""
 Analizza questo report IVR per Setera Centralino e fornisci insights professionali ULTRA-DETTAGLIATI in italiano.
 {entities_section}
+
+⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo una funzione IVR, solo un periodo specifico, solo determinati tipi di chiamate).
+- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
+- NON generare alert su dati mancanti se il report è chiaramente filtrato
+- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
+- Se il report contiene solo un sottoinsieme di funzioni IVR o tipi di chiamate, concentrati su quello e non segnalare come criticità l'assenza di altri dati
+- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+
 IMPORTANTE: 
 - Se ci sono MULTIPLE FUNZIONI IVR nel report, DEVI differenziare le analisi per ogni funzione
 - Crea tabelle separate o colonne per funzione quando i dati lo permettono
@@ -2017,6 +2026,15 @@ def create_acd_analysis_prompt(data: Dict) -> str:
     return f"""
 Analizza questo report ACD (Automatic Call Distribution) per Setera Centralino e fornisci insights ULTRA-DETTAGLIATI in italiano FOCALIZZATI ESCLUSIVAMENTE SULL'ANDAMENTO DEL CENTRALINO.
 {entities_section}
+
+⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo chiamate in uscita, solo un periodo specifico).
+- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
+- NON generare alert su dati mancanti se il report è chiaramente filtrato (es: se ci sono solo chiamate in arrivo e zero in uscita, è normale)
+- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
+- Se il report contiene solo un tipo di dati, concentrati su quello e non segnalare come criticità l'assenza dell'altro tipo
+- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+
 IMPORTANTE: 
 - Se ci sono MULTIPLI GRUPPI ACD nel report, DEVI differenziare le analisi per ogni gruppo
 - Crea tabelle separate o colonne per gruppo quando i dati lo permettono
@@ -2264,6 +2282,15 @@ CRITICO - DEVI INIZIARE IL REPORT CON:
 "Ecco un'analisi ultra-dettagliata focalizzata esclusivamente sull'andamento del centralino Setera{user_name_display} nel periodo [periodo specifico]"
 
 {users_section}
+
+⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo chiamate in uscita, solo un periodo specifico).
+- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
+- NON generare alert su dati mancanti se il report è chiaramente filtrato (es: se ci sono solo chiamate in uscita e zero in arrivo, è normale - il report è filtrato solo su chiamate in uscita)
+- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
+- Se il report contiene solo chiamate in arrivo (o solo in uscita), concentrati su quello e non segnalare come criticità l'assenza dell'altro tipo
+- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+
 IMPORTANTE: 
 - Se ci sono MULTIPLI UTENTI nel report, DEVI differenziare le analisi per ogni utente
 - Crea tabelle separate o colonne per utente quando i dati lo permettono
@@ -2475,6 +2502,15 @@ def create_huntgroup_analysis_prompt(data: Dict) -> str:
     return f"""
 Analizza questo report HUNTGROUP per Setera Centralino e fornisci insights ULTRA-DETTAGLIATI in italiano FOCALIZZATI ESCLUSIVAMENTE SULL'ANDAMENTO DEL CENTRALINO.
 {entities_section}
+
+⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo un HuntGroup, solo un periodo specifico, solo determinati tipi di chiamate).
+- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
+- NON generare alert su dati mancanti se il report è chiaramente filtrato
+- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
+- Se il report contiene solo un sottoinsieme di HuntGroups o tipi di chiamate, concentrati su quello e non segnalare come criticità l'assenza di altri dati
+- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+
 IMPORTANTE: 
 - Se ci sono MULTIPLI HUNTGROUPS nel report, DEVI differenziare le analisi per ogni HuntGroup
 - Crea tabelle separate o colonne per HuntGroup quando i dati lo permettono
@@ -2644,6 +2680,15 @@ def create_rulebased_analysis_prompt(data: Dict) -> str:
     return f"""
 Analizza questo report RULEBASED per Setera Centralino e fornisci insights ULTRA-DETTAGLIATI in italiano FOCALIZZATI ESCLUSIVAMENTE SULL'ANDAMENTO DEL CENTRALINO.
 {entities_section}
+
+⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo una funzione RuleBased, solo un periodo specifico, solo determinati tipi di chiamate).
+- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
+- NON generare alert su dati mancanti se il report è chiaramente filtrato
+- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
+- Se il report contiene solo un sottoinsieme di funzioni RuleBased o tipi di chiamate, concentrati su quello e non segnalare come criticità l'assenza di altri dati
+- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+
 IMPORTANTE: 
 - Se ci sono MULTIPLE FUNZIONI RULEBASED nel report, DEVI differenziare le analisi per ogni funzione
 - Crea tabelle separate o colonne per funzione quando i dati lo permettono
