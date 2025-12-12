@@ -16,6 +16,9 @@ Parameters:
       - dev
       - prod
     Description: Environment name
+  ProjectName:
+    Type: String
+    Description: Project name for resource tagging
 
 Resources:
   # ========================================
@@ -44,6 +47,8 @@ Resources:
           RequireLowercase: true
           RequireNumbers: true
           RequireSymbols: true
+      UserPoolTags:
+        project: !Ref ProjectName
 
   CognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -102,6 +107,9 @@ Resources:
         - AttributeName: tenant_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
 
   UsersTable:
     Type: AWS::DynamoDB::Table
@@ -133,6 +141,9 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
 
   ReportHistoryTable:
     Type: AWS::DynamoDB::Table
@@ -152,6 +163,9 @@ Resources:
         AttributeName: ttl
         Enabled: true
       BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
 
   ResellerTenantsTable:
     Type: AWS::DynamoDB::Table
@@ -175,6 +189,9 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
 
   # ========================================
   # S3 BUCKET
@@ -193,6 +210,9 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
 
   # ========================================
   # API GATEWAY
@@ -231,6 +251,8 @@ Resources:
         Authorizers:
           CognitoAuth:
             UserPoolArn: !GetAtt CognitoUserPool.Arn
+      Tags:
+        project: !Ref ProjectName
 
   # ========================================
   # API BACKEND LAMBDA
@@ -241,6 +263,8 @@ Resources:
       FunctionName: !Sub maya-api-${Environment}
       CodeUri: src/api/
       Handler: api.lambda_handler
+      Tags:
+        project: !Ref ProjectName
       Environment:
         Variables:
           REGION: !Ref AWS::Region
@@ -625,6 +649,8 @@ Resources:
       Handler: report_generator.lambda_handler
       Timeout: 301  # UPDATED: Changed to force deployment
       MemorySize: 1536  # Increased for matplotlib chart generation
+      Tags:
+        project: !Ref ProjectName
       Environment:
         Variables:
           REGION: !Ref AWS::Region
@@ -666,6 +692,8 @@ Resources:
       CodeUri: src/email-sender/
       Handler: email_sender.lambda_handler
       Timeout: 60
+      Tags:
+        project: !Ref ProjectName
       Environment:
         Variables:
           REGION: !Ref AWS::Region

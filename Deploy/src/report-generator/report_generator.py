@@ -888,6 +888,12 @@ def parse_user_xml(xml_content: str) -> Dict:
         total_answered = total_data.get('incoming_answered', 0)
         total_outgoing = total_data.get('outgoing_total', 0)
         answer_rate = calculate_percentage(total_answered, total_incoming)
+
+        # Detect dataset scope (serve per evitare falsi alert su dati mancanti per filtri)
+        is_only_outgoing = total_incoming == 0 and total_outgoing > 0
+        is_only_incoming = total_outgoing == 0 and total_incoming > 0
+        is_empty_dataset = total_incoming == 0 and total_outgoing == 0
+        has_both_directions = total_incoming > 0 and total_outgoing > 0
         
         peak_hours = sorted(hourly_data, key=lambda x: x.get('incoming_total', 0) + x.get('outgoing_total', 0), reverse=True)[:3]
         
@@ -984,6 +990,11 @@ def parse_user_xml(xml_content: str) -> Dict:
                 'total_duration': format_duration_minutes(total_data.get('total_calls_duration', 0)),
                 'failures': total_data.get('failures', 0),
                 'answer_rate': answer_rate,
+                # Flag di filtraggio esplicito per il prompt/model
+                'is_only_outgoing': is_only_outgoing,
+                'is_only_incoming': is_only_incoming,
+                'is_empty_dataset': is_empty_dataset,
+                'has_both_directions': has_both_directions,
             },
             'daily_breakdown': daily_data,
             'hourly_analysis': {
@@ -2027,12 +2038,14 @@ def create_acd_analysis_prompt(data: Dict) -> str:
 Analizza questo report ACD (Automatic Call Distribution) per Setera Centralino e fornisci insights ULTRA-DETTAGLIATI in italiano FOCALIZZATI ESCLUSIVAMENTE SULL'ANDAMENTO DEL CENTRALINO.
 {entities_section}
 
-⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
-I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo chiamate in uscita, solo un periodo specifico).
+🚨 REGOLA ASSOLUTA - NESSUNA CRITICITÀ SU DATI FILTRATI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo un periodo specifico).
+- È VIETATO generare alert critici, allarmi o messaggi di "malfunzionamento" su dati mancanti se il dataset è filtrato
+- È VIETATO usare toni allarmistici (es: "CRITICO", "ATTENZIONE", "malfunzionamento sistema") per dati mancanti dovuti a filtri
 - Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
-- NON generare alert su dati mancanti se il report è chiaramente filtrato (es: se ci sono solo chiamate in arrivo e zero in uscita, è normale)
-- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
-- Se il report contiene solo un tipo di dati, concentrati su quello e non segnalare come criticità l'assenza dell'altro tipo
+- Le criticità sono SOLO per problemi operativi REALI (es: 100 chiamate in arrivo e 0 risposte = problema reale)
+- Analizza SOLO i dati presenti nel report, ignora completamente i dati assenti per filtri
+- Tono sempre neutro e informativo, mai allarmistico su dati mancanti
 - Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
 
 IMPORTANTE: 
@@ -2216,6 +2229,12 @@ def create_user_analysis_prompt(data: Dict) -> str:
     hourly_analysis = data.get('hourly_analysis', {})
     insights = data.get('insights', {})
     specific_details = data.get('specific_details', {})
+
+    # Dataset scope flags (evitano falsi alert su dati mancanti per filtri)
+    is_only_outgoing = summary.get('is_only_outgoing', False)
+    is_only_incoming = summary.get('is_only_incoming', False)
+    is_empty_dataset = summary.get('is_empty_dataset', False)
+    has_both_directions = summary.get('has_both_directions', False)
     
     peak_hours = hourly_analysis.get('peak_hours', [])
     
@@ -2283,13 +2302,21 @@ CRITICO - DEVI INIZIARE IL REPORT CON:
 
 {users_section}
 
-⚠️ CRITICO - RICONOSCIMENTO DATI FILTRATI/PARZIALI:
-I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo chiamate in uscita, solo un periodo specifico).
-- Se un dato è 0 o mancante, VERIFICA se il report è filtrato prima di generare alert
-- NON generare alert su dati mancanti se il report è chiaramente filtrato (es: se ci sono solo chiamate in uscita e zero in arrivo, è normale - il report è filtrato solo su chiamate in uscita)
-- Analizza SOLO i dati presenti nel report, non quelli assenti per filtri
-- Se il report contiene solo chiamate in arrivo (o solo in uscita), concentrati su quello e non segnalare come criticità l'assenza dell'altro tipo
-- Genera alert SOLO su anomalie nei dati effettivamente presenti, non su dati mancanti per filtri
+🚨 REGOLA ASSOLUTA - NESSUNA CRITICITÀ SU DATI FILTRATI:
+I report possono essere pre-filtrati e contenere solo un sottoinsieme di dati (es: solo chiamate in arrivo, solo chiamate in uscita).
+- È VIETATO generare alert critici, allarmi o messaggi di "malfunzionamento" su dati mancanti se il dataset è filtrato
+- È VIETATO usare toni allarmistici (es: "CRITICO", "ATTENZIONE", "malfunzionamento sistema") per dati mancanti dovuti a filtri
+- Se il dataset è filtrato solo su uscita (0 in arrivo, >0 in uscita): NON menzionare l'assenza di chiamate in arrivo come problema
+- Se il dataset è filtrato solo su arrivo (>0 in arrivo, 0 in uscita): NON menzionare l'assenza di chiamate in uscita come problema
+- Se il dataset è vuoto (0 in arrivo, 0 in uscita): usa solo una nota informativa neutra, NON alert critici
+- Le criticità sono SOLO per problemi operativi REALI (es: 100 chiamate in arrivo e 0 risposte = problema reale)
+- Analizza SOLO i dati presenti nel report, ignora completamente i dati assenti per filtri
+- Tono sempre neutro e informativo, mai allarmistico su dati mancanti
+
+{"⚠️ CONTESTO DATASET FILTRATO (VINCOLANTE):" if (is_only_outgoing or is_only_incoming or is_empty_dataset) else ""}
+{"- Dataset filtrato: SOLO CHIAMATE IN USCITA. NON segnalare come criticità l'assenza di chiamate in ingresso: è dovuta al filtro." if is_only_outgoing else ""}
+{"- Dataset filtrato: SOLO CHIAMATE IN ARRIVO. NON segnalare come criticità l'assenza di chiamate in uscita: è dovuta al filtro." if is_only_incoming else ""}
+{"- Dataset vuoto per il periodo fornito. Non generare alert di malfunzionamento: limitati a una nota informativa neutra." if is_empty_dataset else ""}
 
 IMPORTANTE: 
 - Se ci sono MULTIPLI UTENTI nel report, DEVI differenziare le analisi per ogni utente
@@ -2886,8 +2913,27 @@ def generate_fallback_insights(data: Dict) -> str:
         total_incoming = summary.get('incoming_total', 0)
         total_outgoing = summary.get('outgoing_total', 0)
         answered = summary.get('incoming_answered', 0)
+        is_only_outgoing = summary.get('is_only_outgoing', False)
+        is_only_incoming = summary.get('is_only_incoming', False)
+        is_empty_dataset = summary.get('is_empty_dataset', False)
+        has_both_directions = summary.get('has_both_directions', False)
         
         answer_status = "🟢" if answer_rate >= 85 else "🟡" if answer_rate >= 70 else "🔴"
+
+        # Messaggi adattivi per evitare falsi alert
+        incoming_line = f"📞 Chiamate in arrivo: <strong>{total_incoming}</strong>"
+        outgoing_line = f"📤 Chiamate in uscita: <strong>{total_outgoing}</strong>"
+        note_line = ""
+        if is_only_outgoing:
+            incoming_line = "📞 Chiamate in arrivo: <em>Non presenti (dataset filtrato solo su uscita)</em>"
+            note_line = "ℹ️ Dataset filtrato: analisi solo chiamate in uscita. Nessun alert sull'assenza di ingressi."
+        elif is_only_incoming:
+            outgoing_line = "📤 Chiamate in uscita: <em>Non presenti (dataset filtrato solo su ingresso)</em>"
+            note_line = "ℹ️ Dataset filtrato: analisi solo chiamate in ingresso. Nessun alert sull'assenza di uscite."
+        elif is_empty_dataset:
+            incoming_line = "📞 Chiamate in arrivo: <em>0 (nessuna attività nel periodo)</em>"
+            outgoing_line = "📤 Chiamate in uscita: <em>0 (nessuna attività nel periodo)</em>"
+            note_line = "ℹ️ Nessuna attività nel periodo fornito. Nessuna criticità generata."
         
         return f"""
         📊 <strong>MAYA ANALYTICS - REPORT USER (CENTRALINO)</strong>
@@ -2896,10 +2942,11 @@ def generate_fallback_insights(data: Dict) -> str:
         {answer_status} Tasso di risposta: <strong>{answer_rate}%</strong>
         
         📈 <strong>METRICHE CENTRALINO</strong>
-        📞 Chiamate in arrivo: <strong>{total_incoming}</strong>
-        📤 Chiamate in uscita: <strong>{total_outgoing}</strong>
+        {incoming_line}
+        {outgoing_line}
         ✅ Chiamate risposte: <strong>{answered}</strong>
         ⏱️ Durata totale: <strong>{summary.get('total_duration', 'N/A')}</strong>
+        {note_line}
         
         💡 <strong>INSIGHTS CENTRALINO</strong>
         • {("🟢 Utilizzo centralino efficiente" if answer_rate >= 85 else "⚠️ Centralino necessita ottimizzazione" if answer_rate >= 70 else "🚨 Performance centralino critiche")}

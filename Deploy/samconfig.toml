@@ -7,7 +7,7 @@ s3_prefix = "maya-analytics-meridix"
 region = "eu-central-1"
 profile = "Neuralect_Maya_share"
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Environment=\"prod\""
+parameter_overrides = "Environment=\"prod\" ProjectName=\"ProjectAnalytics\""
 confirm_changeset = true
 image_repositories = []
 
