@@ -15,14 +15,14 @@ echo.
 REM ===== CONFIGURAZIONE AGGIORNATA =====
 set PROFILE=Neuralect_Maya_share
 set REGION=eu-central-1
-set USER_POOL_ID=eu-central-1_t3GcmkM98
-set CLIENT_ID=3hp2kafq3gjk5a96skk5omggbs
+set USER_POOL_ID=eu-central-1_jVkfkoatG
+set CLIENT_ID=5k8kqhpmdufe2ou376l5qsdpmo
 set USERS_TABLE=maya-users-prod
 
 REM ===== DATI SUPERADMIN =====
-set ADMIN_EMAIL=belal.darwish@neuralect.it
-set ADMIN_NAME=Belal Superadmin
-set ADMIN_PASSWORD=Neuralect.1234
+set ADMIN_EMAIL=emiliano.menichelli@neuralect.it
+set ADMIN_NAME=Emiliano Superadmin
+set ADMIN_PASSWORD=Neuralect.123!
 set USERNAME=%ADMIN_EMAIL%
 
 echo [INFO] SuperAdmin:

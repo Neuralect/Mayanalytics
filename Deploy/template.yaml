@@ -22,15 +22,17 @@ Parameters:
 
 Resources:
   # ========================================
-  # COGNITO USER POOL - CREATE NEW
+  # COGNITO USER POOL - RECREATED
   # ========================================
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: !Sub maya-analytics-${Environment}
-      AutoVerifiedAttributes:
-        - email
       UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
         - email
       Schema:
         - Name: email
