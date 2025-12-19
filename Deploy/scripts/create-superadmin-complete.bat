@@ -19,11 +19,6 @@ set USER_POOL_ID=eu-central-1_eIs0HT7aN
 set CLIENT_ID=41erklu7iorpilb2dn98avf76f
 set USERS_TABLE=maya-users-prod
 
-REM ===== DATI SUPERADMIN =====
-set ADMIN_EMAIL=emiliano.menichelli@neuralect.it
-set ADMIN_NAME=Emiliano Superadmin
-set ADMIN_PASSWORD=Neuralect.123!
-set USERNAME=%ADMIN_EMAIL%
 
 echo [INFO] SuperAdmin:
 echo   Username: %USERNAME%
