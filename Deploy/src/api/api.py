@@ -21,6 +21,9 @@ TENANTS_TABLE = os.environ['TENANTS_TABLE']
 USERS_TABLE = os.environ['USERS_TABLE']
 REPORTS_TABLE = os.environ.get('REPORTS_TABLE', '')
 RESELLER_TENANTS_TABLE = os.environ.get('RESELLER_TENANTS_TABLE', '')
+RESELLER_ORGANIZATIONS_TABLE = os.environ.get('RESELLER_ORGANIZATIONS_TABLE', '')
+RESELLER_USER_ORGANIZATIONS_TABLE = os.environ.get('RESELLER_USER_ORGANIZATIONS_TABLE', '')
+RESELLER_ORG_TENANTS_TABLE = os.environ.get('RESELLER_ORG_TENANTS_TABLE', '')
 USER_POOL_ID = os.environ['USER_POOL_ID']
 
 # DynamoDB tables
@@ -30,6 +33,12 @@ if REPORTS_TABLE:
     reports_table = dynamodb.Table(REPORTS_TABLE)
 if RESELLER_TENANTS_TABLE:
     reseller_tenants_table = dynamodb.Table(RESELLER_TENANTS_TABLE)
+if RESELLER_ORGANIZATIONS_TABLE:
+    reseller_organizations_table = dynamodb.Table(RESELLER_ORGANIZATIONS_TABLE)
+if RESELLER_USER_ORGANIZATIONS_TABLE:
+    reseller_user_organizations_table = dynamodb.Table(RESELLER_USER_ORGANIZATIONS_TABLE)
+if RESELLER_ORG_TENANTS_TABLE:
+    reseller_org_tenants_table = dynamodb.Table(RESELLER_ORG_TENANTS_TABLE)
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -117,40 +126,87 @@ def is_admin(user: Dict) -> bool:
     """Check if user is Admin"""
     return 'Admin' in user.get('groups', [])
 
-def get_reseller_tenants(reseller_id: str) -> List[str]:
-    """Get list of tenant IDs assigned to a reseller"""
-    if not RESELLER_TENANTS_TABLE:
+def get_reseller_organizations(reseller_user_id: str) -> List[str]:
+    """Get list of organization IDs for a reseller user"""
+    if not RESELLER_USER_ORGANIZATIONS_TABLE:
         return []
     
     try:
-        result = reseller_tenants_table.query(
-            KeyConditionExpression='reseller_id = :rid',
-            ExpressionAttributeValues={':rid': reseller_id}
+        result = reseller_user_organizations_table.query(
+            KeyConditionExpression='user_id = :uid',
+            ExpressionAttributeValues={':uid': reseller_user_id}
+        )
+        return [item['org_id'] for item in result.get('Items', [])]
+    except Exception as e:
+        logger.error(f"Error getting reseller organizations: {str(e)}")
+        return []
+
+def get_organization_tenants(org_id: str) -> List[str]:
+    """Get list of tenant IDs assigned to a reseller organization"""
+    if not RESELLER_ORG_TENANTS_TABLE:
+        return []
+    
+    try:
+        result = reseller_org_tenants_table.query(
+            KeyConditionExpression='reseller_org_id = :oid',
+            ExpressionAttributeValues={':oid': org_id}
         )
         return [item['tenant_id'] for item in result.get('Items', [])]
     except Exception as e:
-        logger.error(f"Error getting reseller tenants: {str(e)}")
+        logger.error(f"Error getting organization tenants: {str(e)}")
         return []
 
-def is_tenant_assigned_to_reseller(tenant_id: str, reseller_id: str) -> bool:
-    """Check if a tenant is assigned to a reseller"""
-    if not RESELLER_TENANTS_TABLE:
-        return False
+def get_reseller_tenants(reseller_id: str) -> List[str]:
+    """Get list of tenant IDs assigned to a reseller (direct + via organizations)"""
+    tenant_ids = set()
     
-    try:
-        result = reseller_tenants_table.get_item(
-            Key={
-                'reseller_id': reseller_id,
-                'tenant_id': tenant_id
-            }
-        )
-        return 'Item' in result
-    except Exception as e:
-        logger.error(f"Error checking tenant assignment: {str(e)}")
-        return False
+    # Get direct tenant assignments (retrocompatibilità)
+    if RESELLER_TENANTS_TABLE:
+        try:
+            result = reseller_tenants_table.query(
+                KeyConditionExpression='reseller_id = :rid',
+                ExpressionAttributeValues={':rid': reseller_id}
+            )
+            for item in result.get('Items', []):
+                tenant_ids.add(item['tenant_id'])
+        except Exception as e:
+            logger.error(f"Error getting direct reseller tenants: {str(e)}")
+    
+    # Get tenant assignments via organizations
+    org_ids = get_reseller_organizations(reseller_id)
+    for org_id in org_ids:
+        org_tenants = get_organization_tenants(org_id)
+        tenant_ids.update(org_tenants)
+    
+    return list(tenant_ids)
+
+def is_tenant_assigned_to_reseller(tenant_id: str, reseller_id: str) -> bool:
+    """Check if a tenant is assigned to a reseller (direct or via organizations)"""
+    # Check direct assignment (retrocompatibilità)
+    if RESELLER_TENANTS_TABLE:
+        try:
+            result = reseller_tenants_table.get_item(
+                Key={
+                    'reseller_id': reseller_id,
+                    'tenant_id': tenant_id
+                }
+            )
+            if 'Item' in result:
+                return True
+        except Exception as e:
+            logger.error(f"Error checking direct tenant assignment: {str(e)}")
+    
+    # Check via organizations
+    org_ids = get_reseller_organizations(reseller_id)
+    for org_id in org_ids:
+        org_tenants = get_organization_tenants(org_id)
+        if tenant_id in org_tenants:
+            return True
+    
+    return False
 
 def can_reseller_access_tenant(user: Dict, tenant_id: str) -> bool:
-    """Check if reseller can access a specific tenant"""
+    """Check if reseller can access a specific tenant (direct or via organizations)"""
     if not is_reseller(user):
         return False
     
@@ -1464,6 +1520,356 @@ def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
         return response(500, {'error': str(e)})
 
 # ========================================
+# RESELLER ORGANIZATIONS MANAGEMENT
+# ========================================
+def create_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Create new reseller organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORGANIZATIONS_TABLE:
+        return response(500, {'error': 'Reseller organizations table not configured'})
+    
+    try:
+        body = json.loads(event.get('body', '{}'))
+        
+        # Validate required fields
+        if not body.get('name'):
+            return response(400, {'error': 'Missing required field: name'})
+        
+        # Generate organization ID
+        org_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat()
+        
+        # Create organization record
+        org_item = {
+            'org_id': org_id,
+            'name': body['name'],
+            'description': body.get('description', ''),
+            'created_at': timestamp,
+            'created_by': user['user_id']
+        }
+        
+        reseller_organizations_table.put_item(Item=org_item)
+        
+        logger.info(f"Created reseller organization {org_id}")
+        
+        return response(201, {
+            'message': 'Reseller organization created successfully',
+            'organization': org_item
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating reseller organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def list_reseller_organizations(user: Dict) -> Dict:
+    """List all reseller organizations (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORGANIZATIONS_TABLE:
+        return response(500, {'error': 'Reseller organizations table not configured'})
+    
+    try:
+        result = reseller_organizations_table.scan()
+        organizations = result.get('Items', [])
+        
+        # For each organization, get associated users and tenants
+        for org in organizations:
+            org_id = org['org_id']
+            
+            # Get associated users
+            if RESELLER_USER_ORGANIZATIONS_TABLE:
+                users_result = reseller_user_organizations_table.query(
+                    IndexName='org-index',
+                    KeyConditionExpression='org_id = :oid',
+                    ExpressionAttributeValues={':oid': org_id}
+                )
+                org['users'] = [item['user_id'] for item in users_result.get('Items', [])]
+                org['users_count'] = len(org['users'])
+            else:
+                org['users'] = []
+                org['users_count'] = 0
+            
+            # Get assigned tenants
+            if RESELLER_ORG_TENANTS_TABLE:
+                tenants_result = reseller_org_tenants_table.query(
+                    KeyConditionExpression='reseller_org_id = :oid',
+                    ExpressionAttributeValues={':oid': org_id}
+                )
+                org['tenants'] = [item['tenant_id'] for item in tenants_result.get('Items', [])]
+                org['tenants_count'] = len(org['tenants'])
+            else:
+                org['tenants'] = []
+                org['tenants_count'] = 0
+            org['tenants'] = [item['tenant_id'] for item in tenants_result.get('Items', [])]
+            org['tenants_count'] = len(org['tenants'])
+        
+        return response(200, {'organizations': organizations})
+        
+    except Exception as e:
+        logger.error(f"Error listing reseller organizations: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def delete_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Delete reseller organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORGANIZATIONS_TABLE:
+        return response(500, {'error': 'Reseller organizations table not configured'})
+    
+    try:
+        org_id = event['pathParameters']['org_id']
+        
+        # Verify organization exists
+        org_result = reseller_organizations_table.get_item(Key={'org_id': org_id})
+        if 'Item' not in org_result:
+            return response(404, {'error': 'Organization not found'})
+        
+        # Delete all user associations
+        if RESELLER_USER_ORGANIZATIONS_TABLE:
+            users_result = reseller_user_organizations_table.query(
+                IndexName='org-index',
+                KeyConditionExpression='org_id = :oid',
+                ExpressionAttributeValues={':oid': org_id}
+            )
+            for item in users_result.get('Items', []):
+                reseller_user_organizations_table.delete_item(
+                    Key={
+                        'user_id': item['user_id'],
+                        'org_id': org_id
+                    }
+                )
+        
+        # Delete all tenant assignments
+        if RESELLER_ORG_TENANTS_TABLE:
+            tenants_result = reseller_org_tenants_table.query(
+                KeyConditionExpression='reseller_org_id = :oid',
+                ExpressionAttributeValues={':oid': org_id}
+            )
+            for item in tenants_result.get('Items', []):
+                reseller_org_tenants_table.delete_item(
+                    Key={
+                        'reseller_org_id': org_id,
+                        'tenant_id': item['tenant_id']
+                    }
+                )
+        
+        # Delete organization
+        reseller_organizations_table.delete_item(Key={'org_id': org_id})
+        
+        logger.info(f"Deleted reseller organization {org_id}")
+        
+        return response(200, {'message': 'Reseller organization deleted successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error deleting reseller organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def add_user_to_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Add reseller user to organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORGANIZATIONS_TABLE or not RESELLER_USER_ORGANIZATIONS_TABLE:
+        return response(500, {'error': 'Reseller organizations tables not configured'})
+    
+    try:
+        org_id = event['pathParameters']['org_id']
+        body = json.loads(event.get('body', '{}'))
+        
+        if not body.get('user_id'):
+            return response(400, {'error': 'Missing required field: user_id'})
+        
+        user_id = body['user_id']
+        
+        # Verify organization exists
+        org_result = reseller_organizations_table.get_item(Key={'org_id': org_id})
+        if 'Item' not in org_result:
+            return response(404, {'error': 'Organization not found'})
+        
+        # Verify user exists and is a Reseller
+        user_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': user_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        if not user_result.get('Items') or user_result['Items'][0].get('role') != 'Reseller':
+            return response(404, {'error': 'Reseller user not found'})
+        
+        # Check if already associated
+        try:
+            existing = reseller_user_organizations_table.get_item(
+                Key={
+                    'user_id': user_id,
+                    'org_id': org_id
+                }
+            )
+            if 'Item' in existing:
+                return response(400, {'error': 'User already associated with this organization'})
+        except:
+            pass
+        
+        # Add association
+        timestamp = datetime.utcnow().isoformat()
+        reseller_user_organizations_table.put_item(
+            Item={
+                'user_id': user_id,
+                'org_id': org_id,
+                'associated_at': timestamp,
+                'associated_by': user['user_id']
+            }
+        )
+        
+        logger.info(f"Added user {user_id} to organization {org_id}")
+        
+        return response(200, {
+            'message': 'User added to organization successfully',
+            'user_id': user_id,
+            'org_id': org_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding user to organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def remove_user_from_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Remove reseller user from organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_USER_ORGANIZATIONS_TABLE:
+        return response(500, {'error': 'Reseller user organizations table not configured'})
+    
+    try:
+        org_id = event['pathParameters']['org_id']
+        user_id = event['pathParameters']['user_id']
+        
+        # Remove association
+        reseller_user_organizations_table.delete_item(
+            Key={
+                'user_id': user_id,
+                'org_id': org_id
+            }
+        )
+        
+        logger.info(f"Removed user {user_id} from organization {org_id}")
+        
+        return response(200, {
+            'message': 'User removed from organization successfully',
+            'user_id': user_id,
+            'org_id': org_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error removing user from organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def assign_tenant_to_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Assign tenant to reseller organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORGANIZATIONS_TABLE or not RESELLER_ORG_TENANTS_TABLE:
+        return response(500, {'error': 'Reseller organizations tables not configured'})
+    
+    try:
+        org_id = event['pathParameters']['org_id']
+        body = json.loads(event.get('body', '{}'))
+        
+        if not body.get('tenant_id'):
+            return response(400, {'error': 'Missing required field: tenant_id'})
+        
+        tenant_id = body['tenant_id']
+        
+        # Verify organization exists
+        org_result = reseller_organizations_table.get_item(Key={'org_id': org_id})
+        if 'Item' not in org_result:
+            return response(404, {'error': 'Organization not found'})
+        
+        # Verify tenant exists
+        tenant_result = tenants_table.get_item(Key={'tenant_id': tenant_id})
+        if 'Item' not in tenant_result:
+            return response(404, {'error': 'Tenant not found'})
+        
+        # Check if already assigned
+        try:
+            existing = reseller_org_tenants_table.get_item(
+                Key={
+                    'reseller_org_id': org_id,
+                    'tenant_id': tenant_id
+                }
+            )
+            if 'Item' in existing:
+                return response(400, {'error': 'Tenant already assigned to this organization'})
+        except:
+            pass
+        
+        # Assign tenant
+        timestamp = datetime.utcnow().isoformat()
+        reseller_org_tenants_table.put_item(
+            Item={
+                'reseller_org_id': org_id,
+                'tenant_id': tenant_id,
+                'assigned_at': timestamp,
+                'assigned_by': user['user_id']
+            }
+        )
+        
+        logger.info(f"Assigned tenant {tenant_id} to organization {org_id}")
+        
+        return response(200, {
+            'message': 'Tenant assigned to organization successfully',
+            'org_id': org_id,
+            'tenant_id': tenant_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error assigning tenant to organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+def remove_tenant_from_reseller_organization(event: Dict, user: Dict) -> Dict:
+    """Remove tenant from reseller organization (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    if not RESELLER_ORG_TENANTS_TABLE:
+        return response(500, {'error': 'Reseller org tenants table not configured'})
+    
+    try:
+        org_id = event['pathParameters']['org_id']
+        body = json.loads(event.get('body', '{}'))
+        
+        if not body.get('tenant_id'):
+            return response(400, {'error': 'Missing required field: tenant_id'})
+        
+        tenant_id = body['tenant_id']
+        
+        # Remove assignment
+        reseller_org_tenants_table.delete_item(
+            Key={
+                'reseller_org_id': org_id,
+                'tenant_id': tenant_id
+            }
+        )
+        
+        logger.info(f"Removed tenant {tenant_id} from organization {org_id}")
+        
+        return response(200, {
+            'message': 'Tenant removed from organization successfully',
+            'org_id': org_id,
+            'tenant_id': tenant_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error removing tenant from organization: {str(e)}")
+        return response(500, {'error': str(e)})
+
+# ========================================
 # SUPERADMIN MANAGEMENT
 # ========================================
 
@@ -1952,6 +2358,70 @@ def lambda_handler(event, context):
                 event['pathParameters']['reseller_id'] = reseller_id
                 if method == 'GET':
                     return get_reseller_tenants_list(event, user)
+        
+        # Reseller Organizations endpoints
+        elif path == '/reseller-organizations':
+            if method == 'POST':
+                return create_reseller_organization(event, user)
+            elif method == 'GET':
+                return list_reseller_organizations(user)
+        
+        elif path.startswith('/reseller-organizations/') and '/users/' in path and not path.endswith('/users'):
+            # Extract org_id and user_id from path like /reseller-organizations/{org_id}/users/{user_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 5 and path_parts[1] == 'reseller-organizations' and path_parts[3] == 'users':
+                org_id = path_parts[2]
+                user_id = path_parts[4]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['org_id'] = org_id
+                event['pathParameters']['user_id'] = user_id
+                if method == 'DELETE':
+                    return remove_user_from_reseller_organization(event, user)
+        
+        elif path.startswith('/reseller-organizations/') and path.endswith('/users'):
+            # Extract org_id from path like /reseller-organizations/{org_id}/users
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'reseller-organizations' and path_parts[3] == 'users':
+                org_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['org_id'] = org_id
+                if method == 'POST':
+                    return add_user_to_reseller_organization(event, user)
+        
+        elif path.startswith('/reseller-organizations/') and '/assign-tenant' in path:
+            # Extract org_id from path like /reseller-organizations/{org_id}/assign-tenant
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'reseller-organizations' and path_parts[3] == 'assign-tenant':
+                org_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['org_id'] = org_id
+                if method == 'POST':
+                    return assign_tenant_to_reseller_organization(event, user)
+        
+        elif path.startswith('/reseller-organizations/') and '/remove-tenant' in path:
+            # Extract org_id from path like /reseller-organizations/{org_id}/remove-tenant
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'reseller-organizations' and path_parts[3] == 'remove-tenant':
+                org_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['org_id'] = org_id
+                if method == 'POST':
+                    return remove_tenant_from_reseller_organization(event, user)
+        
+        elif path.startswith('/reseller-organizations/') and not '/users' in path and not '/assign-tenant' in path and not '/remove-tenant' in path:
+            # Extract org_id from path like /reseller-organizations/{org_id}
+            path_parts = path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'reseller-organizations':
+                org_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['org_id'] = org_id
+                if method == 'DELETE':
+                    return delete_reseller_organization(event, user)
         
         elif path == '/superadmins':
             if method == 'POST':

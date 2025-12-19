@@ -22,7 +22,7 @@ Parameters:
 
 Resources:
   # ========================================
-  # COGNITO USER POOL - RECREATED
+  # COGNITO USER POOL
   # ========================================
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -94,6 +94,8 @@ Resources:
       GroupName: User
       UserPoolId: !Ref CognitoUserPool
       Description: User group
+
+  # ========================================
 
   # ========================================
   # DYNAMODB TABLES
@@ -196,6 +198,76 @@ Resources:
           Value: !Ref ProjectName
 
   # ========================================
+  # RESELLER ORGANIZATIONS
+  # ========================================
+  ResellerOrganizationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-reseller-organizations-${Environment}
+      AttributeDefinitions:
+        - AttributeName: org_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: org_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  ResellerUserOrganizationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-reseller-user-organizations-${Environment}
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: org_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: org_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: org-index
+          KeySchema:
+            - AttributeName: org_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  ResellerOrgTenantsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub maya-reseller-org-tenants-${Environment}
+      AttributeDefinitions:
+        - AttributeName: reseller_org_id
+          AttributeType: S
+        - AttributeName: tenant_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reseller_org_id
+          KeyType: HASH
+        - AttributeName: tenant_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: tenant-index
+          KeySchema:
+            - AttributeName: tenant_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: project
+          Value: !Ref ProjectName
+
+  # ========================================
   # S3 BUCKET
   # ========================================
   ReportsBucket:
@@ -274,6 +346,9 @@ Resources:
           USERS_TABLE: !Ref UsersTable
           REPORTS_TABLE: !Ref ReportHistoryTable
           RESELLER_TENANTS_TABLE: !Ref ResellerTenantsTable
+          RESELLER_ORGANIZATIONS_TABLE: !Ref ResellerOrganizationsTable
+          RESELLER_USER_ORGANIZATIONS_TABLE: !Ref ResellerUserOrganizationsTable
+          RESELLER_ORG_TENANTS_TABLE: !Ref ResellerOrgTenantsTable
           USER_POOL_ID: !Ref CognitoUserPool
       Policies:
         - DynamoDBCrudPolicy:
@@ -284,6 +359,12 @@ Resources:
             TableName: !Ref ReportHistoryTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ResellerTenantsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ResellerOrganizationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ResellerUserOrganizationsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ResellerOrgTenantsTable
         - Statement:
           - Effect: Allow
             Action:
@@ -306,338 +387,36 @@ Resources:
               - lambda:InvokeFunction
             Resource: !GetAtt ReportGeneratorFunction.Arn
       Events:
-        # Main endpoints
-        TenantsOptions:
+        # OPTIONS events for CORS preflight (no auth required)
+        ProxyOptions:
           Type: Api
           Properties:
-            Path: /tenants
-            Method: options
+            Path: /{proxy+}
+            Method: OPTIONS
             RestApiId: !Ref ApiGateway
             Auth:
               Authorizer: NONE
-        CreateTenant:
+        RootOptions:
           Type: Api
           Properties:
-            Path: /tenants
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ListTenants:
-          Type: Api
-          Properties:
-            Path: /tenants
-            Method: get
-            RestApiId: !Ref ApiGateway
-        TenantIdOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}
-            Method: options
+            Path: /
+            Method: OPTIONS
             RestApiId: !Ref ApiGateway
             Auth:
               Authorizer: NONE
-        GetTenant:
+        # Single catch-all proxy event to avoid Lambda permission limit (20KB)
+        # The Lambda function handles routing internally
+        ProxyApi:
           Type: Api
           Properties:
-            Path: /tenants/{tenant_id}
-            Method: get
+            Path: /{proxy+}
+            Method: ANY
             RestApiId: !Ref ApiGateway
-        UpdateTenant:
+        RootApi:
           Type: Api
           Properties:
-            Path: /tenants/{tenant_id}
-            Method: put
-            RestApiId: !Ref ApiGateway
-        DeleteTenant:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}
-            Method: delete
-            RestApiId: !Ref ApiGateway
-        TenantUsersOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/users
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        CreateUser:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/users
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ListUsers:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/users
-            Method: get
-            RestApiId: !Ref ApiGateway
-        TenantAdminOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/admin
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        CreateTenantAdmin:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/admin
-            Method: post
-            RestApiId: !Ref ApiGateway
-        TenantReportsOptions:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ListTenantReports:
-          Type: Api
-          Properties:
-            Path: /tenants/{tenant_id}/reports
-            Method: get
-            RestApiId: !Ref ApiGateway
-        UserIdOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        GetUser:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}
-            Method: get
-            RestApiId: !Ref ApiGateway
-        UpdateUser:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}
-            Method: put
-            RestApiId: !Ref ApiGateway
-        DeleteUser:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}
-            Method: delete
-            RestApiId: !Ref ApiGateway
-        UserReportsOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ListUserReports:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/reports
-            Method: get
-            RestApiId: !Ref ApiGateway
-        UserConnectorsOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ListConnectors:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors
-            Method: get
-            RestApiId: !Ref ApiGateway
-        CreateConnector:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors
-            Method: post
-            RestApiId: !Ref ApiGateway
-        UserConnectorIdOptions:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors/{connector_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        UpdateConnector:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors/{connector_id}
-            Method: put
-            RestApiId: !Ref ApiGateway
-        DeleteConnector:
-          Type: Api
-          Properties:
-            Path: /users/{user_id}/connectors/{connector_id}
-            Method: delete
-            RestApiId: !Ref ApiGateway
-        ReportsOptions:
-          Type: Api
-          Properties:
-            Path: /reports
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        ListAllReports:
-          Type: Api
-          Properties:
-            Path: /reports
-            Method: get
-            RestApiId: !Ref ApiGateway
-        ProfileOptions:
-          Type: Api
-          Properties:
-            Path: /profile
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        GetProfile:
-          Type: Api
-          Properties:
-            Path: /profile
-            Method: get
-            RestApiId: !Ref ApiGateway
-        UpdateProfile:
-          Type: Api
-          Properties:
-            Path: /profile
-            Method: put
-            RestApiId: !Ref ApiGateway
-        ResellersOptions:
-          Type: Api
-          Properties:
-            Path: /resellers
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        CreateReseller:
-          Type: Api
-          Properties:
-            Path: /resellers
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ListResellers:
-          Type: Api
-          Properties:
-            Path: /resellers
-            Method: get
-            RestApiId: !Ref ApiGateway
-        ResellerIdOptions:
-          Type: Api
-          Properties:
-            Path: /resellers/{reseller_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        DeleteReseller:
-          Type: Api
-          Properties:
-            Path: /resellers/{reseller_id}
-            Method: delete
-            RestApiId: !Ref ApiGateway
-        ResellerAssignOptions:
-          Type: Api
-          Properties:
-            Path: /resellers/assign-tenant
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        AssignTenantToReseller:
-          Type: Api
-          Properties:
-            Path: /resellers/assign-tenant
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ResellerRemoveOptions:
-          Type: Api
-          Properties:
-            Path: /resellers/remove-tenant
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        RemoveTenantFromReseller:
-          Type: Api
-          Properties:
-            Path: /resellers/remove-tenant
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ResellerTenantsOptions:
-          Type: Api
-          Properties:
-            Path: /resellers/{reseller_id}/tenants
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        GetResellerTenants:
-          Type: Api
-          Properties:
-            Path: /resellers/{reseller_id}/tenants
-            Method: get
-            RestApiId: !Ref ApiGateway
-        SuperAdminsOptions:
-          Type: Api
-          Properties:
-            Path: /superadmins
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        CreateSuperAdmin:
-          Type: Api
-          Properties:
-            Path: /superadmins
-            Method: post
-            RestApiId: !Ref ApiGateway
-        ListSuperAdmins:
-          Type: Api
-          Properties:
-            Path: /superadmins
-            Method: get
-            RestApiId: !Ref ApiGateway
-        SuperAdminIdOptions:
-          Type: Api
-          Properties:
-            Path: /superadmins/{superadmin_id}
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        DeleteSuperAdmin:
-          Type: Api
-          Properties:
-            Path: /superadmins/{superadmin_id}
-            Method: delete
-            RestApiId: !Ref ApiGateway
-        TestReportOptions:
-          Type: Api
-          Properties:
-            Path: /test-report
-            Method: options
-            RestApiId: !Ref ApiGateway
-            Auth:
-              Authorizer: NONE
-        TestReport:
-          Type: Api
-          Properties:
-            Path: /test-report
-            Method: post
+            Path: /
+            Method: ANY
             RestApiId: !Ref ApiGateway
 
   # ========================================

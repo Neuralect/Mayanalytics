@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { resellersApi, tenantsApi, superadminsApi } from '@/lib/api';
-import { Reseller, Tenant, SuperAdmin } from '@/types';
+import { tenantsApi, superadminsApi } from '@/lib/api';
+import { Tenant, SuperAdmin } from '@/types';
 import ResellerManagement from '../resellers/ResellerManagement';
 import TenantManagement from '../tenants/TenantManagement';
 import SuperAdminManagement from '../superadmins/SuperAdminManagement';
@@ -11,7 +11,6 @@ import AdminDashboard from './AdminDashboard';
 
 export default function SuperAdminDashboard() {
   const { user, selectedTenantId } = useAuth();
-  const [resellers, setResellers] = useState<Reseller[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [superadmins, setSuperadmins] = useState<SuperAdmin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,13 +26,11 @@ export default function SuperAdminDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [resellersRes, tenantsRes, superadminsRes] = await Promise.all([
-        user?.role === 'SuperAdmin' ? resellersApi.list() : Promise.resolve({ resellers: [] }),
+      const [tenantsRes, superadminsRes] = await Promise.all([
         tenantsApi.list(),
         user?.role === 'SuperAdmin' ? superadminsApi.list() : Promise.resolve({ superadmins: [] }),
       ]);
       
-      if (resellersRes.resellers) setResellers(resellersRes.resellers);
       if (tenantsRes.tenants) setTenants(tenantsRes.tenants);
       if (superadminsRes.superadmins) setSuperadmins(superadminsRes.superadmins);
     } catch (error) {
@@ -70,7 +67,7 @@ export default function SuperAdminDashboard() {
           />
           <div className="mt-6">
         <ResellerManagement 
-          resellers={resellers} 
+          resellers={[]} 
           tenants={tenants}
           onRefresh={loadData}
         />

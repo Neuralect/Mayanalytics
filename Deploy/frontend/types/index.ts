@@ -91,6 +91,31 @@ export interface AssignTenantInput {
   tenant_id: string;
 }
 
+export interface ResellerOrganization {
+  org_id: string;
+  name: string;
+  description?: string;
+  users?: string[];
+  users_count?: number;
+  tenants?: string[];
+  tenants_count?: number;
+  created_at?: string;
+  created_by?: string;
+}
+
+export interface CreateResellerOrganizationInput {
+  name: string;
+  description?: string;
+}
+
+export interface AssignUserToOrganizationInput {
+  user_id: string;
+}
+
+export interface AssignTenantToOrganizationInput {
+  tenant_id: string;
+}
+
 export interface CreateTenantAdminInput {
   email: string;
   name: string;

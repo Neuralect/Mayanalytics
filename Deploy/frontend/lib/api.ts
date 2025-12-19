@@ -95,6 +95,21 @@ export const resellersApi = {
     apiCall('/resellers/remove-tenant', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+// Reseller Organizations (Ruolo Reseller)
+export const resellerOrganizationsApi = {
+  list: () => apiCall<{ organizations: any[] }>('/reseller-organizations'),
+  create: (data: any) => apiCall('/reseller-organizations', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (orgId: string) => apiCall(`/reseller-organizations/${orgId}`, { method: 'DELETE' }),
+  addUser: (orgId: string, data: any) => 
+    apiCall(`/reseller-organizations/${orgId}/users`, { method: 'POST', body: JSON.stringify(data) }),
+  removeUser: (orgId: string, userId: string) => 
+    apiCall(`/reseller-organizations/${orgId}/users/${userId}`, { method: 'DELETE' }),
+  assignTenant: (orgId: string, data: any) => 
+    apiCall(`/reseller-organizations/${orgId}/assign-tenant`, { method: 'POST', body: JSON.stringify(data) }),
+  removeTenant: (orgId: string, data: any) => 
+    apiCall(`/reseller-organizations/${orgId}/remove-tenant`, { method: 'POST', body: JSON.stringify(data) }),
+};
+
 // SuperAdmins
 export const superadminsApi = {
   list: () => apiCall<{ superadmins: any[] }>('/superadmins'),
