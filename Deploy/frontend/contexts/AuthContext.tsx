@@ -25,6 +25,8 @@ interface AuthContextType {
   setSelectedTenantId: (tenantId: string | null) => void;
   showContextSelector: boolean;
   setShowContextSelector: (show: boolean) => void;
+  forgotPassword: (email: string) => Promise<void>;
+  confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -190,6 +192,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const forgotPassword = async (email: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const userData = { Username: email, Pool: userPool };
+      const cognitoUser = new CognitoUser(userData);
+
+      cognitoUser.forgotPassword({
+        onSuccess: () => {
+          resolve();
+        },
+        onFailure: (error) => {
+          reject(error);
+        },
+      });
+    });
+  };
+
+  const confirmPassword = async (email: string, code: string, newPassword: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const userData = { Username: email, Pool: userPool };
+      const cognitoUser = new CognitoUser(userData);
+
+      cognitoUser.confirmPassword(code, newPassword, {
+        onSuccess: () => {
+          resolve();
+        },
+        onFailure: (error) => {
+          reject(error);
+        },
+      });
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -207,6 +241,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSelectedTenantId,
         showContextSelector,
         setShowContextSelector,
+        forgotPassword,
+        confirmPassword,
       }}
     >
       {children}

@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onForgotPassword: () => void;
+}
+
+export default function LoginForm({ onForgotPassword }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -64,7 +68,17 @@ export default function LoginForm() {
           </div>
 
           <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Password</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-gray-700 font-medium">Password</label>
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                disabled={loading}
+                className="text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Password dimenticata?
+              </button>
+            </div>
             <input
               type="password"
               value={password}

@@ -3,12 +3,14 @@
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/LoginForm';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
+import ForgotPasswordForm from '@/components/ForgotPasswordForm';
 import Dashboard from '@/components/Dashboard';
 import ContextSelector from '@/components/ContextSelector';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
   const { user, loading, requiresPasswordChange, showContextSelector, setShowContextSelector } = useAuth();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Show context selector after login for SuperAdmin/Reseller if not already selected
   useEffect(() => {
@@ -39,7 +41,10 @@ export default function Home() {
   }
 
   if (!user) {
-    return <LoginForm />;
+    if (showForgotPassword) {
+      return <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />;
+    }
+    return <LoginForm onForgotPassword={() => setShowForgotPassword(true)} />;
   }
 
   if (showContextSelector && (user.role === 'SuperAdmin' || user.role === 'Reseller')) {
