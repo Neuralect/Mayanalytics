@@ -1477,6 +1477,100 @@ def delete_reseller(event: Dict, user: Dict) -> Dict:
         logger.error(f"Error deleting reseller: {str(e)}")
         return response(500, {'error': str(e)})
 
+def dissociate_reseller(event: Dict, user: Dict) -> Dict:
+    """Dissociate user from reseller role (remove from Reseller group but keep Cognito account) (SuperAdmin only)"""
+    if not is_super_admin(user):
+        return response(403, {'error': 'Unauthorized: SuperAdmin only'})
+    
+    try:
+        reseller_id = event['pathParameters']['reseller_id']
+        
+        # Verify reseller exists
+        reseller_result = users_table.query(
+            KeyConditionExpression='user_id = :uid AND tenant_id = :tid',
+            ExpressionAttributeValues={
+                ':uid': reseller_id,
+                ':tid': 'SYSTEM'
+            }
+        )
+        
+        if not reseller_result.get('Items'):
+            return response(404, {'error': 'Reseller not found'})
+        
+        reseller = reseller_result['Items'][0]
+        
+        # Verify it's actually a reseller
+        if reseller.get('role') != 'Reseller':
+            return response(400, {'error': 'User is not a reseller'})
+        
+        # Remove from Reseller group in Cognito
+        try:
+            cognito.admin_remove_user_from_group(
+                UserPoolId=USER_POOL_ID,
+                Username=reseller['email'],
+                GroupName='Reseller'
+            )
+            logger.info(f"Removed user {reseller['email']} from Reseller group in Cognito")
+        except Exception as e:
+            logger.warning(f"Could not remove user from Reseller group (may not be in group): {str(e)}")
+        
+        # Remove all tenant assignments for this reseller
+        if RESELLER_TENANTS_TABLE:
+            assigned_tenant_ids = get_reseller_tenants(reseller_id)
+            for tenant_id in assigned_tenant_ids:
+                try:
+                    reseller_tenants_table.delete_item(
+                        Key={
+                            'reseller_id': reseller_id,
+                            'tenant_id': tenant_id
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error removing tenant assignment {tenant_id}: {str(e)}")
+        
+        # Remove all organization associations
+        if RESELLER_USER_ORGANIZATIONS_TABLE:
+            try:
+                # Scan and filter to find all organizations this user is associated with
+                scan_result = reseller_user_organizations_table.scan(
+                    FilterExpression='user_id = :uid',
+                    ExpressionAttributeValues={':uid': reseller_id}
+                )
+                
+                for item in scan_result.get('Items', []):
+                    try:
+                        reseller_user_organizations_table.delete_item(
+                            Key={
+                                'user_id': reseller_id,
+                                'org_id': item['org_id']
+                            }
+                        )
+                    except Exception as e:
+                        logger.error(f"Error removing organization association {item['org_id']}: {str(e)}")
+            except Exception as e:
+                logger.warning(f"Could not remove organization associations: {str(e)}")
+        
+        # Delete from DynamoDB (user is no longer a reseller)
+        users_table.delete_item(
+            Key={
+                'user_id': reseller_id,
+                'tenant_id': 'SYSTEM'
+            }
+        )
+        
+        logger.info(f"Dissociated reseller {reseller_id} from reseller role")
+        
+        return response(200, {
+            'message': 'Reseller dissociated successfully',
+            'reseller_id': reseller_id,
+            'email': reseller['email'],
+            'note': 'User removed from Reseller group and all associations. Cognito account still exists but user cannot login without a role.'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error dissociating reseller: {str(e)}")
+        return response(500, {'error': str(e)})
+
 def get_reseller_tenants_list(event: Dict, user: Dict) -> Dict:
     """Get list of tenants assigned to a reseller (SuperAdmin only)"""
     if not is_super_admin(user):
@@ -2327,7 +2421,18 @@ def lambda_handler(event, context):
             elif method == 'GET':
                 return list_resellers(user)
         
-        elif '/resellers/' in path and not '/tenants' in path and not '/assign-tenant' in path and not '/remove-tenant' in path:
+        elif '/resellers/' in path and '/dissociate' in path:
+            # Extract reseller_id from path like /resellers/{reseller_id}/dissociate
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'resellers' and path_parts[3] == 'dissociate':
+                reseller_id = path_parts[2]
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['reseller_id'] = reseller_id
+                if method == 'POST':
+                    return dissociate_reseller(event, user)
+        
+        elif '/resellers/' in path and not '/tenants' in path and not '/assign-tenant' in path and not '/remove-tenant' in path and not '/dissociate' in path:
             # Extract reseller_id from path like /resellers/{reseller_id}
             path_parts = path.split('/')
             if len(path_parts) >= 3 and path_parts[1] == 'resellers':

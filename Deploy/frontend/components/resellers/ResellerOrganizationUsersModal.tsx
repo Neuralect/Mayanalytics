@@ -13,9 +13,11 @@ interface Props {
 export default function ResellerOrganizationUsersModal({ organization, onClose, onRefresh }: Props) {
   const [users, setUsers] = useState<Reseller[]>([]);
   const [allResellers, setAllResellers] = useState<Reseller[]>([]);
+  const [unassociatedResellers, setUnassociatedResellers] = useState<Reseller[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showUnassociated, setShowUnassociated] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
 
   useEffect(() => {
@@ -25,18 +27,43 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [resellersRes] = await Promise.all([
+      const [resellersRes, orgsRes] = await Promise.all([
         resellersApi.list(),
+        resellerOrganizationsApi.list(),
       ]);
       
       if (resellersRes.resellers) {
         setAllResellers(resellersRes.resellers);
+        
+        // Find the current organization in the updated list
+        const currentOrg = orgsRes.organizations?.find((org: ResellerOrganization) => 
+          org.org_id === organization.org_id
+        );
+        
         // Filter users that belong to this organization
-        const orgUserIds = organization.users || [];
+        const orgUserIds = currentOrg?.users || organization.users || [];
         const orgUsers = resellersRes.resellers.filter((r: Reseller) => 
           orgUserIds.includes(r.user_id)
         );
         setUsers(orgUsers);
+        
+        // Find resellers not associated with any organization
+        if (orgsRes.organizations) {
+          const allAssociatedUserIds = new Set<string>();
+          orgsRes.organizations.forEach((org: ResellerOrganization) => {
+            (org.users || []).forEach((userId: string) => {
+              allAssociatedUserIds.add(userId);
+            });
+          });
+          
+          const unassociated = resellersRes.resellers.filter((r: Reseller) => 
+            !allAssociatedUserIds.has(r.user_id)
+          );
+          setUnassociatedResellers(unassociated);
+        } else {
+          // If no organizations, all resellers are unassociated
+          setUnassociatedResellers(resellersRes.resellers);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Errore nel caricamento degli utenti');
@@ -64,7 +91,7 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
   };
 
   const handleRemoveUser = async (userId: string) => {
-    if (!confirm('Sei sicuro di voler rimuovere questo utente dall\'organizzazione?')) {
+    if (!confirm('Sei sicuro di voler rimuovere questo utente dall\'organizzazione? L\'utente diventerà indipendente.')) {
       return;
     }
 
@@ -195,6 +222,66 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
             </table>
           </div>
         )}
+
+        {/* Unassociated Resellers Section */}
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-lg font-semibold text-gray-800">
+              Utenti Reseller Non Associati
+            </h4>
+            <button
+              onClick={() => setShowUnassociated(!showUnassociated)}
+              className="btn btn-secondary btn-small"
+            >
+              {showUnassociated ? 'Nascondi' : 'Mostra'} ({unassociatedResellers.length})
+            </button>
+          </div>
+
+          {showUnassociated && (
+            unassociatedResellers.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">
+                Tutti gli utenti reseller sono associati a un'organizzazione
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unassociatedResellers.map((reseller: Reseller) => (
+                      <tr key={reseller.user_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 border-b">{reseller.name || 'N/A'}</td>
+                        <td className="px-4 py-3 border-b">{reseller.email}</td>
+                        <td className="px-4 py-3 border-b">
+                          <button
+                            onClick={async () => {
+                              try {
+                                setError('');
+                                await resellerOrganizationsApi.addUser(organization.org_id, { user_id: reseller.user_id });
+                                onRefresh();
+                                loadData();
+                              } catch (err: any) {
+                                setError(err.message || 'Errore nell\'aggiunta dell\'utente');
+                              }
+                            }}
+                            className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
+                          >
+                            Aggiungi a questa org
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

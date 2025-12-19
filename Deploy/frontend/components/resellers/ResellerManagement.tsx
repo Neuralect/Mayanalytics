@@ -10,51 +10,109 @@ import AssignTenantToOrganizationModal from './AssignTenantToOrganizationModal';
 import SearchAndFilter from '../common/SearchAndFilter';
 
 interface Props {
-  resellers: Reseller[];
+  resellers?: Reseller[];
   tenants: Tenant[];
   onRefresh: () => void;
 }
 
-export default function ResellerManagement({ resellers, tenants, onRefresh }: Props) {
+export default function ResellerManagement({ resellers: propResellers, tenants, onRefresh }: Props) {
   const [organizations, setOrganizations] = useState<ResellerOrganization[]>([]);
+  const [resellers, setResellers] = useState<Reseller[]>([]);
   const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [showAssignTenantModal, setShowAssignTenantModal] = useState(false);
+  const [showAssociateResellerModal, setShowAssociateResellerModal] = useState(false);
   const [selectedOrganization, setSelectedOrganization] = useState<ResellerOrganization | null>(null);
+  const [selectedReseller, setSelectedReseller] = useState<Reseller | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filterUsersCount, setFilterUsersCount] = useState('all');
   const [filterTenantsCount, setFilterTenantsCount] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [resellerSearchTerm, setResellerSearchTerm] = useState('');
 
   useEffect(() => {
-    loadOrganizations();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [orgsRes, resellersRes] = await Promise.all([
+        resellerOrganizationsApi.list(),
+        resellersApi.list(),
+      ]);
+      
+      if (orgsRes.organizations) {
+        setOrganizations(orgsRes.organizations);
+      }
+      
+      if (resellersRes.resellers) {
+        setResellers(resellersRes.resellers);
+      } else if (propResellers) {
+        // Fallback to prop if API doesn't return data
+        setResellers(propResellers);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      // Fallback to prop if API fails
+      if (propResellers) {
+        setResellers(propResellers);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadOrganizations = async () => {
     try {
-      setLoading(true);
       const response = await resellerOrganizationsApi.list();
       if (response.organizations) {
         setOrganizations(response.organizations);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // Get all associated user IDs
+  const allAssociatedUserIds = useMemo(() => {
+    const associatedIds = new Set<string>();
+    organizations.forEach((org) => {
+      (org.users || []).forEach((userId: string) => {
+        associatedIds.add(userId);
+      });
+    });
+    return associatedIds;
+  }, [organizations]);
+
+  // Filter resellers
+  const filteredResellers = useMemo(() => {
+    let filtered = [...resellers];
+
+    // Apply search filter
+    if (resellerSearchTerm.trim()) {
+      const searchLower = resellerSearchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.name?.toLowerCase().includes(searchLower) ||
+          r.email?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }, [resellers, resellerSearchTerm]);
+
   const handleCreateOrgSuccess = () => {
     setShowCreateOrgModal(false);
-    loadOrganizations();
+    loadData();
     onRefresh();
   };
 
   const handleCreateUserSuccess = () => {
     setShowCreateUserModal(false);
-    loadOrganizations();
+    loadData();
     onRefresh();
   };
 
@@ -68,6 +126,25 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
     setShowAssignTenantModal(true);
   };
 
+  const handleAssociateReseller = (reseller: Reseller) => {
+    setSelectedReseller(reseller);
+    setShowAssociateResellerModal(true);
+  };
+
+  const handleDeleteReseller = async (resellerId: string, resellerEmail: string) => {
+    if (!confirm(`Sei sicuro di voler eliminare l'utente reseller "${resellerEmail}"? Questa azione è irreversibile.`)) {
+      return;
+    }
+
+    try {
+      await resellersApi.delete(resellerId);
+      loadData();
+      onRefresh();
+    } catch (err: any) {
+      alert('Errore durante l\'eliminazione: ' + err.message);
+    }
+  };
+
   const handleDelete = async (org: ResellerOrganization) => {
     if (!confirm(`Sei sicuro di voler eliminare il ruolo reseller "${org.name}"?`)) {
       return;
@@ -75,7 +152,7 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
 
     try {
       await resellerOrganizationsApi.delete(org.org_id);
-      loadOrganizations();
+      loadData();
       onRefresh();
     } catch (err: any) {
       alert('Errore durante l\'eliminazione: ' + err.message);
@@ -282,6 +359,99 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
         </div>
       </div>
 
+      {/* Reseller Users List */}
+      <div className="card mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-2xl font-semibold text-gray-800">Utenti Reseller</h3>
+        </div>
+
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Cerca per nome o email..."
+              value={resellerSearchTerm}
+              onChange={(e) => setResellerSearchTerm(e.target.value)}
+              className="input w-full pl-10"
+            />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              🔍
+            </span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Stato</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Tenant Assegnati</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredResellers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    {resellers.length === 0
+                      ? 'Nessun utente reseller trovato'
+                      : 'Nessun utente reseller corrisponde alla ricerca'}
+                  </td>
+                </tr>
+              ) : (
+                filteredResellers.map((reseller: Reseller) => {
+                  const isIndependent = !allAssociatedUserIds.has(reseller.user_id);
+                  return (
+                    <tr key={reseller.user_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 border-b font-medium">{reseller.name || 'N/A'}</td>
+                      <td className="px-4 py-3 border-b">{reseller.email}</td>
+                      <td className="px-4 py-3 border-b">
+                        {isIndependent ? (
+                          <span className="badge bg-purple-100 text-purple-800">
+                            Indipendente
+                          </span>
+                        ) : (
+                          <span className="badge bg-blue-100 text-blue-800">
+                            Associato
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 border-b">
+                        <span className="badge bg-green-100 text-green-800">
+                          {reseller.assigned_tenants_count || 0} tenant
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 border-b">
+                        <div className="flex gap-2">
+                          {isIndependent && (
+                            <>
+                              <button
+                                onClick={() => handleAssociateReseller(reseller)}
+                                className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
+                              >
+                                Associa
+                              </button>
+                              <button
+                                onClick={() => handleDeleteReseller(reseller.user_id, reseller.email)}
+                                className="btn btn-small btn-danger"
+                              >
+                                Elimina
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {showCreateOrgModal && (
         <CreateResellerOrganizationModal
           onClose={() => setShowCreateOrgModal(false)}
@@ -304,7 +474,7 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
             setSelectedOrganization(null);
           }}
           onRefresh={() => {
-            loadOrganizations();
+            loadData();
             onRefresh();
           }}
         />
@@ -321,10 +491,101 @@ export default function ResellerManagement({ resellers, tenants, onRefresh }: Pr
           onSuccess={() => {
             setShowAssignTenantModal(false);
             setSelectedOrganization(null);
-            loadOrganizations();
+            loadData();
             onRefresh();
           }}
         />
+      )}
+
+      {showAssociateResellerModal && selectedReseller && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-semibold text-gray-800">
+                Associa Utente Reseller
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAssociateResellerModal(false);
+                  setSelectedReseller(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700 mb-2">
+                <strong>Utente:</strong> {selectedReseller.name || selectedReseller.email}
+              </p>
+              <p className="text-gray-600 text-sm mb-4">
+                {selectedReseller.email}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 font-medium mb-2">
+                Seleziona Organizzazione Reseller
+              </label>
+              <select
+                id="orgSelect"
+                className="input mb-4"
+                defaultValue=""
+              >
+                <option value="">-- Seleziona un'organizzazione --</option>
+                {organizations.map((org: ResellerOrganization) => (
+                  <option key={org.org_id} value={org.org_id}>
+                    {org.name} {org.description ? `- ${org.description}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {organizations.length === 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-4">
+                Nessuna organizzazione reseller disponibile. Crea prima un'organizzazione.
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const select = document.getElementById('orgSelect') as HTMLSelectElement;
+                  const orgId = select?.value;
+                  
+                  if (!orgId) {
+                    alert('Seleziona un\'organizzazione');
+                    return;
+                  }
+
+                  try {
+                    await resellerOrganizationsApi.addUser(orgId, { user_id: selectedReseller.user_id });
+                    setShowAssociateResellerModal(false);
+                    setSelectedReseller(null);
+                    loadData();
+                    onRefresh();
+                  } catch (err: any) {
+                    alert('Errore durante l\'associazione: ' + err.message);
+                  }
+                }}
+                disabled={organizations.length === 0}
+                className="btn btn-primary"
+              >
+                Associa
+              </button>
+              <button
+                onClick={() => {
+                  setShowAssociateResellerModal(false);
+                  setSelectedReseller(null);
+                }}
+                className="btn btn-secondary"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
