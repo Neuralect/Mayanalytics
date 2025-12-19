@@ -403,6 +403,9 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
               ) : (
                 filteredResellers.map((reseller: Reseller) => {
                   const isIndependent = !allAssociatedUserIds.has(reseller.user_id);
+                  const associatedOrg = isIndependent 
+                    ? null 
+                    : organizations.find((org) => (org.users || []).includes(reseller.user_id));
                   return (
                     <tr key={reseller.user_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 border-b font-medium">{reseller.name || 'N/A'}</td>
@@ -413,9 +416,16 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
                             Indipendente
                           </span>
                         ) : (
-                          <span className="badge bg-blue-100 text-blue-800">
-                            Associato
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="badge bg-blue-100 text-blue-800">
+                              Associato
+                            </span>
+                            {associatedOrg && (
+                              <span className="text-sm text-gray-600">
+                                ({associatedOrg.name})
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3 border-b">

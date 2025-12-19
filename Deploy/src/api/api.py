@@ -2338,6 +2338,14 @@ def lambda_handler(event, context):
                 return list_tenants(user)
         
         elif path.startswith('/tenants/') and path.endswith('/users'):
+            # Extract tenant_id from path like /tenants/{tenant_id}/users
+            path_parts = path.split('/')
+            if len(path_parts) >= 4 and path_parts[1] == 'tenants' and path_parts[3] == 'users':
+                tenant_id = path_parts[2]
+                # Add tenant_id to pathParameters for the function
+                if 'pathParameters' not in event:
+                    event['pathParameters'] = {}
+                event['pathParameters']['tenant_id'] = tenant_id
             if method == 'POST':
                 return create_user(event, user)
             elif method == 'GET':
