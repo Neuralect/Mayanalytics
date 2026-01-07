@@ -1,35 +1,31 @@
-# Speech-to-Text Multitenant Platform
+# Maya Analytics - Assistente Analytics per Setera Centralino
 
-Una piattaforma serverless completa ed enterprise-ready per la trascrizione automatica, l'analisi e la gestione di registrazioni audio in ambiente multitenant, con supporto per riassunti AI e analisi del sentiment.
+Una piattaforma serverless multitenant enterprise-ready per l'analisi automatica e l'invio schedulato di report analytics basati su dati XML del centralino telefonico Setera, con generazione di insights AI tramite Amazon Bedrock (Claude 3.5 Sonnet).
 
 ## 📋 Indice
 
 - [Panoramica](#-panoramica)
-- [Parte Tecnica](#-parte-tecnica)
+- [Parte Tecnica](#️-parte-tecnica)
 - [Security](#-security)
 - [User Experience](#-user-experience)
 - [Deploy](#-deploy)
-- [Licenze e Funzionalità](#-licenze-e-funzionalità)
-- [Monitoraggio e Manutenzione](#-monitoraggio-e-manutenzione)
-- [Costi](#-costi)
 
 ---
 
 ## 🎯 Panoramica
 
-**Speech-to-Text Multitenant** è una piattaforma cloud-native progettata per gestire la trascrizione automatica di conversazioni telefoniche con capacità avanzate di AI. Il sistema supporta organizzazioni, rivenditori (reseller) e clienti finali (tenant) con completo isolamento dei dati e gestione granulare dei permessi.
+**Maya Analytics** è una piattaforma cloud-native progettata per automatizzare l'analisi e la reportistica dei dati telefonici provenienti dai centralini Setera. Il sistema supporta organizzazioni gerarchiche multi-livello (SuperAdmin, Reseller, Tenant, User) con completo isolamento dei dati e gestione granulare dei permessi.
 
 ### Caratteristiche Principali
 
-- ✅ **Trascrizione Automatica**: Conversione audio-to-text con identificazione speaker tramite Amazon Transcribe
-- ✅ **Riassunti AI**: Generazione automatica di riassunti con Claude 3.5 Sonnet (Amazon Bedrock)
-- ✅ **Analisi Sentiment**: Analisi emozionale delle conversazioni con Amazon Comprehend
-- ✅ **Architettura Multitenant**: Supporto per reseller, tenant e utenti finali con isolamento dati
-- ✅ **Vocabolari Personalizzati**: Supporto per terminologie specifiche per tenant
-- ✅ **Dashboard Web**: Interfaccia amministrativa completa con React + Vite
-- ✅ **Notifiche Email**: Invio automatico dei risultati in formato PDF
-- ✅ **GDPR Compliant**: Crittografia, retention policy, eliminazione automatica dati
-- ✅ **Serverless**: Architettura completamente serverless con costi ottimizzati
+- ✅ **Report Automatici Schedulati**: Generazione e invio automatico di report personalizzati via email
+- ✅ **AI-Powered Insights**: Analisi avanzate generate con Claude 3.5 Sonnet (Amazon Bedrock)
+- ✅ **Dashboard Amministrativa**: Interfaccia web moderna con Next.js 16 e React 19
+- ✅ **Schedulazione Personalizzata**: Ogni utente può configurare la propria frequenza di ricezione report
+- ✅ **Parsing Multi-Report**: Supporto per 5 tipologie di report XML (ACD, IVR, User, Hunt Group, Rule-Based)
+- ✅ **Visualizzazione Avanzata**: Grafici generati con matplotlib per analisi visuali
+- ✅ **Architettura Multitenant**: Supporto per Reseller con organizzazioni e tenant multipli
+- ✅ **GDPR Compliant**: Crittografia, retention policy, isolamento dati
 
 ---
 
@@ -41,327 +37,298 @@ Il sistema utilizza un'architettura serverless moderna basata su AWS:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        Frontend (React + Vite)                       │
-│                     AWS Amplify Hosting + Cognito                    │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 ▼
+│                         FRONTEND (AWS Amplify)                       │
+│   - Next.js 16 (App Router)                                         │
+│   - React 19 + TailwindCSS 4                                        │
+│   - Cognito Auth (amazon-cognito-identity-js)                       │
+└─────────────────────┬───────────────────────────────────────────────┘
+                      │ HTTPS
+                      ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      API Gateway (REST API)                          │
-│             - Admin API (Cognito Authorizer)                         │
-│             - Partner API (Custom Lambda Authorizer)                 │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    ▼                         ▼
-┌──────────────────────────┐    ┌──────────────────────────┐
-│   Lambda Functions       │    │   Storage & Database      │
-│   - ProcessAudio         │    │   - S3 (audio files)      │
-│   - GenerateSummary      │    │   - DynamoDB (metadata)   │
-│   - SentimentAnalysis    │◄───┤   - Transcribe (jobs)     │
-│   - SendEmail            │    │   - Bedrock (AI)          │
-│   - TenantManagement     │    │   - Comprehend (NLP)      │
-│   - UserManagement       │    │   - SES (email)           │
-│   - LicenseManagement    │    │   - Cognito (auth)        │
-│   - VocabularyMgmt       │    └──────────────────────────┘
-└──────────────────────────┘
+│              API GATEWAY (REST API - Cognito Authorizer)            │
+│   - /tenants, /users, /resellers                                    │
+│   - /profile, /report-history                                       │
+│   - /reseller-organizations                                         │
+└─────────────────────┬───────────────────────────────────────────────┘
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐
+│ API Lambda   │ │ Report Gen.  │ │ Email Sender Lambda  │
+│ (api.py)     │ │ Lambda       │ │ (email_sender.py)    │
+│              │ │ (report_     │ │                      │
+│ • CRUD       │ │  generator   │ │ • Amazon SES         │
+│ • Cognito    │ │  .py)        │ │ • HTML Templates     │
+│ • DynamoDB   │ │              │ │ • UTF-8 Encoding     │
+│              │ │ • XML Parse  │ └──────────────────────┘
+│              │ │ • Bedrock AI │
+│              │ │ • Matplotlib │
+└──────────────┘ │ • Charts     │
+                 │ • Scheduling │
+                 └──────────────┘
+                      │
+        ┌─────────────┼─────────────┬──────────────────┐
+        ▼             ▼             ▼                  ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌──────────────┐
+│ DynamoDB     │ │ Amazon       │ │ Amazon   │ │ Amazon SES   │
+│              │ │ Bedrock      │ │ Cognito  │ │              │
+│ • Tenants    │ │              │ │          │ │ • noreply@   │
+│ • Users      │ │ • Claude 3.5 │ │ • User   │ │   neuralect  │
+│ • Resellers  │ │   Sonnet     │ │   Pool   │ │   .it        │
+│ • Reports    │ │ • Insights   │ │ • Groups │ │              │
+│ • Orgs       │ │   AI         │ │ • JWT    │ └──────────────┘
+└──────────────┘ └──────────────┘ └──────────┘
 ```
 
 ### Stack Tecnologico
 
 #### Backend
-- **Runtime**: Node.js 16.x
-- **IaC**: AWS SAM (Serverless Application Model)
-- **Language**: JavaScript (AWS SDK v2)
-- **Deployment**: CloudFormation
+
+| Componente | Tecnologia | Versione |
+|------------|-----------|----------|
+| **Runtime** | Python | 3.13 |
+| **IaC** | AWS SAM | 2016-10-31 |
+| **Deployment** | CloudFormation | - |
+| **HTTP Client** | requests | 2.32.4 |
+| **AWS SDK** | boto3 | 1.34.0 |
+| **Visualizzazione** | matplotlib | 3.8.4 |
+| **Calcoli** | numpy | 1.26.4 |
+| **Immagini** | pillow | 10.4.0 |
 
 #### Frontend
-- **Framework**: React 18.3
-- **Build Tool**: Vite 5.4
-- **Auth**: AWS Amplify 6.15
-- **Hosting**: AWS Amplify Console
+
+| Componente | Tecnologia | Versione |
+|------------|-----------|----------|
+| **Framework** | Next.js | 16.0.3 |
+| **UI Library** | React | 19.2.0 |
+| **Styling** | TailwindCSS | 4 |
+| **Auth** | amazon-cognito-identity-js | 6.3.16 |
+| **Language** | TypeScript | 5 |
+| **Build Tool** | Next.js (Turbopack) | - |
+| **Hosting** | AWS Amplify Console | - |
 
 #### Servizi AWS
 
 | Servizio | Utilizzo | Note |
 |----------|----------|------|
-| **Lambda** | Elaborazione serverless | 13 funzioni principali |
-| **API Gateway** | REST API | 2 API Gateway (Admin + Partner) |
-| **DynamoDB** | Database NoSQL | 6 tabelle (records, licenses, tenants, resellers, vocabularies, partners) |
-| **S3** | Storage oggetti | Audio files, PDF, vocabolari |
-| **Transcribe** | Speech-to-Text | Supporto speaker labels, vocabolari custom |
-| **Bedrock** | AI Generativa | Claude 3.5 Sonnet per riassunti |
-| **Comprehend** | NLP | Sentiment analysis, language detection |
-| **Cognito** | Autenticazione | User Pool per admin, reseller, user |
-| **SES** | Email | Notifiche automatiche con PDF allegati |
-| **EventBridge** | Scheduling | Cleanup giornaliero automatico |
-| **VPC (Optional)** | Networking | Isolamento rete con NAT Gateway |
+| **Lambda** | Elaborazione serverless | 3 funzioni (API, Report Gen, Email) |
+| **API Gateway** | REST API | Cognito Authorizer |
+| **DynamoDB** | Database NoSQL | 7 tabelle (Pay-per-request) |
+| **Cognito** | Autenticazione | User Pool + 4 gruppi |
+| **Bedrock** | AI Generativa | Claude 3.5 Sonnet (eu-central-1) |
+| **SES** | Email | Invio report HTML |
+| **EventBridge** | Scheduling | Cron ogni minuto per check schedules |
+| **Amplify Console** | Frontend Hosting | CI/CD automatico |
 | **CloudWatch** | Monitoring | Logs e metriche |
 
 ### Lambda Functions
 
-#### 1. **ProcessAudioFunction**
-- **Trigger**: S3 Event (upload file .wav)
-- **Funzione**: Orchestrazione principale del flusso di trascrizione
+#### 1. **ApiFunction** (`api.py`)
+- **Trigger**: API Gateway (ANY /{proxy+})
+- **Funzione**: Backend principale per tutte le operazioni CRUD
+- **Timeout**: 30s
+- **Memory**: 512MB
+- **Features**:
+  - Gestione utenti (CRUD con Cognito)
+  - Gestione tenant
+  - Gestione reseller e organizzazioni
+  - Report history
+  - User profile
+  - Invocazione report generator on-demand
+
+#### 2. **ReportGeneratorFunction** (`report_generator.py`)
+- **Trigger**: EventBridge Schedule (cron ogni minuto)
+- **Funzione**: Genera e invia report schedulati
+- **Timeout**: 301s (5 minuti)
+- **Memory**: 1536MB (per matplotlib)
 - **Workflow**:
-  1. Legge metadata JSON associato al file audio (se disponibile)
-  2. Estrae informazioni cliente/agente
-  3. Verifica/crea licenza automaticamente per nuovi clienti
-  4. Crea record in DynamoDB
-  5. Avvia job Amazon Transcribe (con vocabolario custom se disponibile)
-  6. Polling asincrono dello stato del job
-  7. Quando completato, invoca le funzioni downstream (summary, sentiment, email)
-- **Timeout**: 900s (15 minuti)
+  1. **Check Schedule**: Verifica se ci sono utenti da processare in questo minuto
+  2. **Fetch XML**: Recupera dati XML da endpoint Setera dell'utente
+  3. **Parse XML**: Analizza XML e estrae metriche (5 parser specializzati)
+  4. **Generate Charts**: Crea grafici con matplotlib (daily trends, hourly heatmap)
+  5. **AI Insights**: Chiama Claude 3.5 Sonnet per analisi approfondite
+  6. **Generate HTML**: Crea report HTML con insights + grafici embedded (base64)
+  7. **Send Email**: Invoca Email Sender Lambda
+  8. **Update History**: Salva record in DynamoDB
+  
+- **Parser Supportati**:
+  - **ACD Report**: Analisi coda chiamate (answer rate, queue time, abandoned calls)
+  - **IVR Report**: Metriche IVR (connections, transfers, destinations, failures)
+  - **User Report**: Performance agenti (incoming/outgoing, duration, answer rate)
+  - **Hunt Group Report**: Distribuzione gruppi (overflow, ring time)
+  - **Rule-Based Report**: Routing rules (connection rate, handled calls)
 
-#### 2. **GenerateSummaryFunction**
-- **Trigger**: Invocazione da ProcessAudio
-- **Funzione**: Genera riassunto intelligente della conversazione
-- **AI**: Amazon Bedrock con Claude 3.5 Sonnet
-- **Output**: Riassunto 150-200 parole in italiano
-
-#### 3. **SentimentAnalysisFunction**
-- **Trigger**: Invocazione da ProcessAudio
-- **Funzione**: Analizza il sentiment della conversazione
-- **AI**: Amazon Comprehend
-- **Output**: 
-  - Sentiment complessivo (POSITIVE, NEGATIVE, NEUTRAL, MIXED)
-  - Score granulari per segmenti temporali
-
-#### 4. **SendEmailFunction**
-- **Trigger**: Invocazione da ProcessAudio
-- **Funzione**: Genera PDF e invia email con risultati
-- **Componenti**:
-  - Generazione PDF con `pdfkit` (trascrizione + riassunto + sentiment)
-  - Upload PDF su S3
-  - Invio email via SES con PDF allegato
-  - URL firmato per download audio originale
-
-#### 5. **TenantManagementFunction**
-- **API**: `/api/tenants` (GET, POST, PUT, DELETE)
-- **Funzione**: CRUD tenants con supporto reseller
+#### 3. **EmailSenderFunction** (`email_sender.py`)
+- **Trigger**: Invocazione diretta da ReportGeneratorFunction
+- **Funzione**: Invia email HTML via Amazon SES
+- **Timeout**: 60s
 - **Features**:
-  - Creazione tenant con admin automatico in Cognito
-  - Associazione/disassociazione reseller (organizzazioni o utenti indipendenti)
-  - Supporto array multipli di reseller per tenant
-  - Filtering basato su ruolo (superadmin vede tutti, reseller solo i propri)
-
-#### 6. **UserManagementFunction**
-- **API**: `/api/users` (GET, POST, PUT, DELETE)
-- **Funzione**: Gestione utenti Cognito
-- **Features**:
-  - Creazione utenti con ruoli (superadmin, reseller, admin, user)
-  - Assegnazione tenant/reseller
-  - Update email e attributi custom
-  - Filtering basato su permessi
-
-#### 7. **LicenseManagementFunction**
-- **API**: `/api/licenses` (GET, PUT)
-- **Funzione**: Gestione licenze clienti
-- **Tipi Licenza**: BASE, R (Riassunti), S (Sentiment), R+S (Completa)
-
-#### 8. **VocabularyManagementFunction**
-- **API**: `/api/vocabularies` (GET, POST, PUT, DELETE)
-- **Funzione**: Gestione vocabolari personalizzati per Transcribe
-- **Features**:
-  - Upload file vocabolario su S3
-  - Creazione/update vocabolari Transcribe
-  - Associazione tenant-specifica
-
-#### 9. **ResellerManagementFunction**
-- **API**: `/api/resellers` (GET, POST, PUT, DELETE)
-- **Funzione**: CRUD organizzazioni reseller
-
-#### 10. **GetStatisticsFunction**
-- **API**: `/api/statistics` (GET)
-- **Funzione**: Statistiche aggregate
-- **Metriche**: Totale registrazioni, durata, sentiment breakdown, per tenant
-
-#### 11. **GetRecordingsFunction**
-- **API**: `/api/recordings` (GET)
-- **Funzione**: Lista registrazioni con filtering
-- **Features**: Paginazione, filtering per tenant, URL firmati per download
-
-#### 12. **GetUploadUrlFunction**
-- **API**: `/upload-url` (POST)
-- **Funzione**: Genera pre-signed URL per upload S3
-- **Auth**: Custom Lambda Authorizer (API key partner)
-
-#### 13. **CleanupFunction**
-- **Trigger**: EventBridge (cron: ogni giorno alle 01:00 UTC)
-- **Funzione**: Eliminazione automatica dati scaduti (TTL + S3 cleanup)
-
-#### 14. **AuthorizerFunction**
-- **Tipo**: Custom Lambda Authorizer
-- **Funzione**: Validazione API key partner per Partner API
-- **Verifica**: Query DynamoDB PartnersTable
-
-#### 15. **CheckLicenseFunction**
-- **Trigger**: Chiamata interna
-- **Funzione**: Verifica tipo licenza per determinare elaborazioni da eseguire
+  - Encoding UTF-8 robusto per caratteri speciali italiani
+  - Gestione emoji nei report
+  - Validazione email format
+  - Error tracking in DynamoDB
+  - HTML + Plain text alternatives
 
 ### Database Schema (DynamoDB)
 
-#### TranscriptionTable
-```javascript
+#### 1. **maya-tenants-{env}**
+```json
 {
-  recordId: "setera-{orkUid}",           // PK
-  clientId: "setera-client123",
-  agentId: "john-doe",
-  timestamp: 1704067200,
-  filename: "recording.wav",
-  s3Path: "uploads/recording.wav",
-  pdfS3Path: "recordings/{recordId}/transcript.pdf",
-  status: "COMPLETED",
-  transcription: "...",                  // Con speaker labels
-  cleanTranscription: "...",             // Senza labels
-  summary: "...",                        // Da Bedrock
-  sentimentAnalysis: {                   // Da Comprehend
-    overall: {...},
-    temporal: [...]
-  },
-  licenseType: "R+S",
-  fileSize: 2048000,
-  ttl: 1706745600,                       // Auto-delete dopo 30 giorni
-  
-  // Metadata Setera (se disponibili)
-  callId: "12345",
-  callTimestamp: "2024-01-01T10:00:00Z",
-  callDuration: 180,
-  localParty: "0039...",
-  remoteParty: "0039...",
-  direction: "INBOUND",
-  orkUid: "uid-123",
-  tapeId: "tape-456",
-  
-  // GSI: AgentIndex (agentId + timestamp)
+  "tenant_id": "uuid",
+  "name": "string",
+  "status": "active|inactive",
+  "created_at": "iso-timestamp"
 }
 ```
+- **Key**: `tenant_id` (HASH)
 
-#### LicenseTable
-```javascript
+#### 2. **maya-users-{env}**
+```json
 {
-  clientId: "setera-client123",          // PK
-  licenseType: "R+S",                    // BASE, R, S, R+S
-  isActive: true,
-  userEmail: "user@example.com",
-  agentEmails: {
-    "agent1": "agent1@example.com",
-    ...
-  },
-  expirationDate: 1735689600,            // Optional
-  autoCreated: true,                     // Flag per licenze auto-generate
-  Name: "Company Name"
+  "user_id": "cognito-sub",
+  "tenant_id": "uuid",
+  "email": "string",
+  "name": "string",
+  "role": "SuperAdmin|Reseller|Admin|User",
+  "xml_endpoint": "https://...",
+  "xml_token": "string",
+  "report_enabled": true|false,
+  "report_schedule": "0 9 * * 1-5",
+  "report_email": "custom@email.com",
+  "created_at": "iso-timestamp"
 }
 ```
+- **Key**: `user_id` (HASH) + `tenant_id` (RANGE)
+- **GSI**: `email-index`, `tenant-index`
 
-#### TenantsTable
-```javascript
+#### 3. **maya-report-history-{env}**
+```json
 {
-  tenantId: "company-abc",               // PK
-  name: "Company ABC",
-  description: "...",
-  isActive: true,
-  adminEmail: "admin@company.com",
-  resellerIds: ["reseller-org-1", "reseller-org-2"],  // Array organizzazioni
-  resellerUsers: ["reseller-user-sub-1"],             // Array utenti indipendenti
-  createdAt: 1704067200,
-  createdBy: "superadmin@platform.com"
-  
-  // GSI: ResellerIndex (resellerId)
+  "user_id": "cognito-sub",
+  "report_timestamp": "iso-timestamp",
+  "status": "sent|failed|processing",
+  "sent_at": "iso-timestamp",
+  "error_message": "string (optional)",
+  "ttl": 1234567890
 }
 ```
+- **Key**: `user_id` (HASH) + `report_timestamp` (RANGE)
+- **TTL**: Enabled (automatic cleanup)
 
-#### ResellersTable
-```javascript
+#### 4. **maya-reseller-tenants-{env}**
+```json
 {
-  resellerId: "reseller-org-1",          // PK
-  name: "Reseller Company",
-  contactEmail: "contact@reseller.com",
-  isActive: true,
-  createdAt: 1704067200
+  "reseller_id": "cognito-sub",
+  "tenant_id": "uuid",
+  "assigned_at": "iso-timestamp"
 }
 ```
+- **Key**: `reseller_id` (HASH) + `tenant_id` (RANGE)
+- **GSI**: `tenant-index`
 
-#### CustomVocabulariesTable
-```javascript
-{
-  vocabularyId: "uuid",                  // PK
-  tenantId: "company-abc",
-  vocabularyName: "transcribe-vocab-name",
-  s3Path: "vocabularies/{tenantId}/{vocabularyId}.txt",
-  status: "READY",                       // PENDING, READY, FAILED
-  languageCode: "it-IT",
-  createdAt: 1704067200
-  
-  // GSI: TenantIndex (tenantId)
-}
-```
+#### 5-7. **Reseller Organizations Tables**
+- `maya-reseller-organizations-{env}`: Organizzazioni reseller
+- `maya-reseller-user-organizations-{env}`: Mapping utenti-organizzazioni
+- `maya-reseller-org-tenants-{env}`: Mapping organizzazioni-tenant
 
-#### PartnersTable
-```javascript
-{
-  partnerId: "partner-setera",           // PK
-  partnerName: "Setera PBX",
-  apiKey: "hex-encoded-key",
-  isActive: true,
-  createdAt: 1704067200
-  
-  // GSI: ApiKeyIndex (apiKey)
-}
-```
-
-### Flusso di Elaborazione
+### Flusso Completo: Generazione Report
 
 ```
-1. File WAV caricato su S3 (+ JSON metadata opzionale)
-                ↓
-2. ProcessAudioFunction triggata da S3 Event
-                ↓
-3. Lettura metadata, verifica/creazione licenza
-                ↓
-4. Creazione record DynamoDB (status: PROCESSING)
-                ↓
-5. Avvio Amazon Transcribe Job (con vocab custom se disponibile)
-                ↓
-6. Polling stato job (ogni 30s)
-                ↓
-7. Job completato → Download risultati JSON
-                ↓
-8. Formattazione trascrizione con speaker labels
-                ↓
-9. Aggiornamento DynamoDB (status: TRANSCRIBED)
-                ↓
-        ┌───────┴───────┐
-        ▼               ▼
-10a. Summary       10b. Sentiment
-    (Bedrock)          (Comprehend)
-        │               │
-        └───────┬───────┘
-                ▼
-11. Attesa 10s per completamento
-                ↓
-12. SendEmailFunction
-    - Genera PDF (pdfkit)
-    - Upload PDF su S3
-    - Invia email SES con allegato
-                ↓
-13. Aggiornamento DynamoDB (emailSent: true)
-                ↓
-14. COMPLETATO
+┌─────────────────────────────────────────────────────────────┐
+│ 1. EventBridge Schedule (cron: * * * * ? *)                │
+│    Trigger ogni minuto                                      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. ReportGeneratorFunction - Check Schedules               │
+│    - Scan users_table                                       │
+│    - Filter: report_enabled=true                            │
+│    - Parse cron: "0 9 * * 1-5" (daily 9am, Mon-Fri)       │
+│    - Match current time with user schedules                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼ (for each matched user)
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Fetch XML Data                                           │
+│    GET xml_endpoint                                         │
+│    Headers: {"Authorization": f"Bearer {xml_token}"}       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Parse XML Report                                         │
+│    - Detect report type (ACD/IVR/User/HuntGroup/RuleBased) │
+│    - Extract metrics, timestamps, entity names              │
+│    - Build structured data dict                             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. Generate Charts (matplotlib)                             │
+│    - Daily trend line chart (last 7-30 days)               │
+│    - Hourly heatmap (color-coded by volume)                │
+│    - Convert to base64 PNG                                  │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 6. Generate AI Insights (Claude 3.5 Sonnet)                │
+│    POST bedrock-runtime.InvokeModel                         │
+│    Model: anthropic.claude-3-5-sonnet-20240620-v1:0        │
+│    Prompt: Specialized per tipo report (italiano)          │
+│    Response: Insights strutturati (~1500 tokens)           │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 7. Build HTML Email                                         │
+│    - Header con logo e data                                 │
+│    - AI Insights (formatted HTML)                           │
+│    - Charts embedded (base64)                               │
+│    - Metrics tables                                         │
+│    - Footer con link dashboard                              │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 8. Invoke EmailSenderFunction                               │
+│    lambda_client.invoke(                                    │
+│      FunctionName='maya-email-sender-v2-{env}',            │
+│      Payload={                                              │
+│        'to_email': user_report_email,                       │
+│        'subject': '🤖 Maya Analytics - Report...',         │
+│        'html_content': html,                                │
+│        'user_id': user_id                                   │
+│      }                                                       │
+│    )                                                        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 9. Send Email (Amazon SES)                                  │
+│    ses.send_email(                                          │
+│      Source='noreply@neuralect.it',                        │
+│      Destination={'ToAddresses': [user_email]},            │
+│      Message={'Subject': {...}, 'Body': {'Html': {...}}}   │
+│    )                                                        │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 10. Update Report History (DynamoDB)                        │
+│     reports_table.put_item({                                │
+│       'user_id': user_id,                                   │
+│       'report_timestamp': now,                              │
+│       'status': 'sent',                                     │
+│       'sent_at': now,                                       │
+│       'ttl': now + 90 days                                  │
+│     })                                                      │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+                    ✅ COMPLETATO
 ```
-
-### VPC Configuration (Opzionale)
-
-Il sistema supporta deployment in VPC per maggiore sicurezza:
-
-- **VPC**: 10.0.0.0/16
-- **Public Subnets**: 2 AZ (10.0.1.0/24, 10.0.2.0/24) per NAT Gateway
-- **Private Subnets**: 2 AZ (10.0.10.0/24, 10.0.20.0/24) per Lambda
-- **NAT Gateways**: 2 (alta disponibilità)
-- **VPC Endpoints**: S3 e DynamoDB (gateway, gratuiti)
-- **Security Group**: Lambda SG con regole HTTPS outbound
-
-**Nota**: VPC è disabilitato di default per ridurre costi (EnableVpc=false).
 
 ---
 
@@ -370,512 +337,831 @@ Il sistema supporta deployment in VPC per maggiore sicurezza:
 ### Autenticazione e Autorizzazione
 
 #### 1. **Amazon Cognito User Pool**
-- **User Pool ID**: Centralizzato per tutti gli utenti (admin, reseller, user)
-- **Attributi Custom**:
-  - `custom:role`: superadmin | reseller | admin | user
-  - `custom:tenantId`: Associazione tenant
-  - `custom:resellerId`: Associazione organizzazione reseller
-- **Password Policy**:
-  - Lunghezza minima: 12 caratteri
-  - Richiesti: uppercase, lowercase, numeri, simboli
-- **Token Validity**:
-  - Access Token: 60 minuti
-  - ID Token: 60 minuti
-  - Refresh Token: 30 giorni
 
-#### 2. **Modello di Autorizzazione Gerarchico**
+**Configurazione User Pool**:
+- **Name**: `maya-analytics-{env}`
+- **Username Attributes**: Email (auto-verified)
+- **Custom Attributes**:
+  - `custom:tenant_id`: Associazione tenant (String, mutable)
+  
+**Password Policy**:
+```yaml
+MinimumLength: 8
+RequireUppercase: true
+RequireLowercase: true
+RequireNumbers: true
+RequireSymbols: true
+```
+
+**Token Validity**:
+- Access Token: 60 minuti
+- ID Token: 60 minuti  
+- Refresh Token: 30 giorni
+
+**Authentication Flows**:
+- `ALLOW_USER_PASSWORD_AUTH`: Login standard email/password
+- `ALLOW_REFRESH_TOKEN_AUTH`: Refresh automatico sessione
+- `ALLOW_USER_SRP_AUTH`: Secure Remote Password (recommended)
+- `ALLOW_ADMIN_USER_PASSWORD_AUTH`: Admin password management
+
+#### 2. **Modello di Autorizzazione Gerarchico a 4 Livelli**
 
 ```
 ┌─────────────────────────────────────────────────┐
 │            SUPERADMIN                           │
-│  - Gestisce tutto                               │
-│  - Crea/modifica tenant, reseller, utenti       │
-│  - Context switching per visualizzare come      │
-│    qualsiasi tenant                             │
+│  ✓ Gestisce TUTTO il sistema                   │
+│  ✓ Crea/modifica tenant, reseller, admin        │
+│  ✓ Context switching (visualizza come tenant)  │
+│  ✓ Accesso dashboard completa                   │
+│  ✓ Gestione organizzazioni reseller             │
 └────────────────────┬────────────────────────────┘
                      │
           ┌──────────┴──────────┐
           ▼                     ▼
 ┌───────────────────┐   ┌───────────────────┐
-│     RESELLER      │   │      TENANT       │
-│  - Gestisce propri│   │   (Organizzazione)│
-│    tenant         │   │                   │
-│  - Crea utenti per│   └────────┬──────────┘
-│    i propri tenant│            │
-└─────────┬─────────┘            ▼
-          │              ┌───────────────────┐
-          └─────────────►│      ADMIN        │
-                         │  - Gestisce utenti│
-                         │    del proprio    │
-                         │    tenant         │
-                         │  - Visualizza dati│
-                         │    del tenant     │
-                         └─────────--────────┘
+│     RESELLER      │   │      ADMIN        │
+│  ✓ Crea tenant    │   │  ✓ Gestisce       │
+│    propri         │   │    utenti tenant  │
+│  ✓ Organizzazioni │   │  ✓ Visualizza     │
+│    multi-tenant   │   │    report tenant  │
+│  ✓ Crea admin per │   │  ✓ Gestisce       │
+│    i tenant       │   │    connettori XML │
+│  ✓ Context        │   └─────────┬─────────┘
+│    switching      │             │
+└─────────┬─────────┘             │
+          │                       │
+          └───────────┬───────────┘
+                      ▼
+          ┌───────────────────────┐
+          │       USER            │
+          │  ✓ Riceve report      │
+          │    automatici via     │
+          │    email              │
+          │  ✗ NO accesso         │
+          │    dashboard          │
+          └───────────────────────┘
 ```
 
-#### 3. **JWT Verification**
-- **Libreria**: `jsonwebtoken` + `jwks-rsa`
-- **JWKS Endpoint**: `https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/jwks.json`
-- **Verifica**:
-  - Signature con chiave pubblica RSA
-  - Issuer: Cognito User Pool
-  - Audience: User Pool Client ID
-  - Scadenza token
+**Permessi Dettagliati**:
 
-#### 4. **API Gateway Authorization**
+| Azione | SuperAdmin | Reseller | Admin | User |
+|--------|-----------|----------|-------|------|
+| Crea tenant | ✅ | ✅ (propri) | ❌ | ❌ |
+| Crea reseller | ✅ | ❌ | ❌ | ❌ |
+| Crea admin | ✅ | ✅ (per propri tenant) | ❌ | ❌ |
+| Crea user | ✅ | ✅ (per propri tenant) | ✅ (proprio tenant) | ❌ |
+| Visualizza tutti i tenant | ✅ | ✅ (propri) | ❌ | ❌ |
+| Context switching | ✅ | ✅ (propri tenant) | ❌ | ❌ |
+| Accesso dashboard | ✅ | ✅ | ✅ | ❌ |
+| Gestione organizzazioni | ✅ | ✅ (proprie) | ❌ | ❌ |
+| Modifica XML connector | ✅ | ✅ (propri utenti) | ✅ (proprio tenant) | ❌ |
+| Riceve report email | ✅ | ✅ | ✅ | ✅ |
 
-**Admin API** (Cognito Authorizer):
-```javascript
-// Header richiesto
+#### 3. **API Gateway Authorization**
+
+**Cognito Authorizer**:
+```yaml
+Auth:
+  DefaultAuthorizer: CognitoAuth
+  Authorizers:
+    CognitoAuth:
+      UserPoolArn: !GetAtt CognitoUserPool.Arn
+```
+
+**Request Headers**:
+```http
 Authorization: Bearer {idToken}
-
-// Opzionale per context switching superadmin
-X-Tenant-Id: {tenantId}
 ```
 
-**Partner API** (Custom Lambda Authorizer):
-```javascript
-// Header richiesto
-Authorization: Bearer {apiKey}
+**Token Validation**:
+- Verifica firma JWT con JWKS pubblico di Cognito
+- Verifica issuer: `https://cognito-idp.eu-central-1.amazonaws.com/{userPoolId}`
+- Verifica audience: Client ID
+- Verifica scadenza (exp claim)
 
-// L'authorizer valida l'API key contro PartnersTable
-```
+#### 4. **Row-Level Security (Isolamento Dati)**
 
-#### 5. **Isolamento Dati (Row-Level Security)**
+Ogni endpoint Lambda implementa filtering automatico basato su ruolo e tenant:
 
-Ogni Lambda function implementa filtering basato su ruolo:
+```python
+def get_user_from_event(event):
+    """Extract user info from Cognito authorizer"""
+    claims = event['requestContext']['authorizer']['claims']
+    
+    return {
+        'user_id': claims['sub'],
+        'email': claims['email'],
+        'tenant_id': claims.get('custom:tenant_id'),
+        'groups': claims.get('cognito:groups', [])
+    }
 
-```javascript
-// Esempio: GetRecordingsFunction
-if (userInfo.role === 'user') {
-  // Vede solo i propri record
-  filter = { clientId: userInfo.tenantId, agentId: userInfo.email }
-} else if (userInfo.role === 'admin') {
-  // Vede tutti i record del proprio tenant
-  filter = { clientId: userInfo.tenantId }
-} else if (userInfo.role === 'reseller') {
-  // Vede record dei tenant che gli appartengono
-  const myTenants = await getResellerTenants(userInfo.sub)
-  filter = { clientId: { $in: myTenants } }
-} else if (userInfo.role === 'superadmin') {
-  // Context switching: se specificato X-Tenant-Id, filtra per quel tenant
-  const effectiveTenantId = headers['X-Tenant-Id'] || 'ALL'
-  if (effectiveTenantId !== 'ALL') {
-    filter = { clientId: effectiveTenantId }
-  }
-  // Altrimenti vede tutto
-}
+def check_permissions(user, action, resource):
+    """Check if user can perform action on resource"""
+    
+    if 'SuperAdmin' in user['groups']:
+        # SuperAdmin ha accesso a tutto
+        return True
+    
+    if 'Reseller' in user['groups']:
+        # Reseller vede solo i suoi tenant
+        if action == 'read:tenant':
+            return resource['tenant_id'] in get_reseller_tenants(user['user_id'])
+    
+    if 'Admin' in user['groups']:
+        # Admin vede solo il proprio tenant
+        if action == 'read:user':
+            return resource['tenant_id'] == user['tenant_id']
+    
+    if 'User' in user['groups']:
+        # User può solo modificare se stesso
+        if action == 'update:profile':
+            return resource['user_id'] == user['user_id']
+    
+    return False
 ```
 
 ### Crittografia
 
 #### 1. **Data at Rest**
-- **DynamoDB**: SSE-KMS abilitato su tutte le tabelle
-- **S3**: Server-Side Encryption (SSE-AES256) su tutti gli oggetti
-- **Transcribe**: Output automaticamente crittografato da AWS
+
+| Risorsa | Metodo | Key Management |
+|---------|--------|---------------|
+| **DynamoDB** | SSE (Server-Side Encryption) | AWS Managed (default) |
+| **CloudWatch Logs** | SSE-KMS | AWS Managed |
+| **Lambda Environment Variables** | KMS | AWS Managed |
+
+**DynamoDB Encryption**:
+- Tutte le tabelle hanno encryption-at-rest abilitata di default
+- Utilizzo di AWS Managed Keys (no costi aggiuntivi)
+- Transparent per l'applicazione
 
 #### 2. **Data in Transit**
-- **TLS 1.2+**: Obbligatorio per tutte le connessioni API Gateway
-- **HTTPS**: Tutti gli endpoint esposti solo via HTTPS
-- **Pre-signed URLs**: Expire dopo 7 giorni
+
+| Connessione | Protocollo | Versione Minima |
+|------------|-----------|----------------|
+| **Frontend → API Gateway** | HTTPS/TLS | 1.2 |
+| **API Gateway → Lambda** | HTTPS (interno AWS) | 1.2 |
+| **Lambda → DynamoDB** | HTTPS | 1.2 |
+| **Lambda → Bedrock** | HTTPS | 1.2 |
+| **Lambda → Cognito** | HTTPS | 1.2 |
+| **Lambda → SES** | HTTPS | 1.2 |
+| **Lambda → Setera (XML endpoint)** | HTTPS | 1.2 |
+
+**Certificate Management**:
+- API Gateway: Certificate gestito da AWS (wildcard *.execute-api.eu-central-1.amazonaws.com)
+- Amplify: Certificate gestito automaticamente (ACM)
+
+#### 3. **Secrets Management**
+
+**Strategia**:
+- ❌ NO secrets hardcoded nel codice
+- ❌ NO secrets in environment variables (pubbliche)
+- ✅ `xml_token`: Salvato in DynamoDB (encrypted at rest)
+- ✅ Cognito User Pool ID/Client ID: Environment variables (pubblici)
+- ✅ AWS credentials: IAM Roles (automatic temporary credentials)
+
+```python
+# ❌ BAD - Never do this
+API_KEY = "sk-1234567890abcdef"
+
+# ✅ GOOD - Load from DynamoDB
+user = users_table.get_item(Key={'user_id': user_id})
+xml_token = user['xml_token']  # Encrypted at rest in DynamoDB
+```
 
 ### GDPR Compliance
 
-#### 1. **Right to Erasure**
-- **TTL DynamoDB**: Eliminazione automatica record dopo 30 giorni (configurabile)
-- **S3 Lifecycle**: Eliminazione automatica file audio e PDF dopo 30 giorni
-- **CleanupFunction**: Pulizia giornaliera per sincronizzare S3 e DynamoDB
+#### 1. **Right to Erasure (Cancellazione Dati)**
+
+**TTL DynamoDB**:
+```yaml
+ReportHistoryTable:
+  TimeToLiveSpecification:
+    AttributeName: ttl
+    Enabled: true
+```
+- Report history eliminata automaticamente dopo 90 giorni
+- TTL calcolato: `current_timestamp + 90 days`
+
+**User Deletion**:
+```python
+def delete_user(user_id):
+    # 1. Delete from Cognito
+    cognito.admin_delete_user(UserPoolId=USER_POOL_ID, Username=user_id)
+    
+    # 2. Delete from DynamoDB
+    users_table.delete_item(Key={'user_id': user_id, 'tenant_id': tenant_id})
+    
+    # 3. Delete report history
+    reports = reports_table.query(KeyConditionExpression=Key('user_id').eq(user_id))
+    for report in reports['Items']:
+        reports_table.delete_item(Key={'user_id': user_id, 'report_timestamp': report['report_timestamp']})
+```
 
 #### 2. **Data Minimization**
-- **Metadata limitati**: Solo dati necessari per il servizio
-- **No PII non necessari**: Email e identificatori minimi
+
+**Dati Raccolti** (minimo necessario):
+- Email (per autenticazione e invio report)
+- Nome (per personalizzazione)
+- XML endpoint + token (per recupero dati centralino)
+- Report schedule (per schedulazione)
+- Custom report email (opzionale)
+
+**Dati NON Raccolti**:
+- ❌ Numero di telefono
+- ❌ Indirizzo fisico
+- ❌ Data di nascita
+- ❌ Dati sensibili non necessari
 
 #### 3. **Right to Access**
-- **API `/api/recordings`**: Utente può scaricare tutte le proprie registrazioni e PDF
-- **Email automatica**: Copia dei dati inviata all'utente appena disponibile
 
-#### 4. **Consent Management**
-- **Licenze**: Sistema di licenze che abilita/disabilita funzionalità
-- **isActive flag**: Disattivazione immediata elaborazioni
+**API `/api/profile`**:
+```http
+GET /api/profile
+Authorization: Bearer {token}
 
-#### 5. **Data Residency**
-- **Region**: `eu-central-1` (Francoforte) per compliance europea
-- **Tutti i dati**: Rimangono all'interno della region EU
-
-### Logging e Audit
-
-- **CloudWatch Logs**: Tutti i log Lambda con retention configurabile
-- **No Sensitive Data in Logs**: Password, API keys, contenuti audio mai loggati
-- **Audit Trail**: Timestamp e userEmail in tutti i record DynamoDB per tracking modifiche
-
-### IAM e Least Privilege
-
-Ogni Lambda ha un ruolo IAM dedicato con permessi minimi:
-
-```yaml
-# Esempio: ProcessAudioFunction
-Policies:
-  - S3ReadPolicy: { BucketName: audio-bucket }
-  - DynamoDBCrudPolicy: { TableName: TranscriptionTable }
-  - DynamoDBCrudPolicy: { TableName: LicenseTable }
-  - DynamoDBReadPolicy: { TableName: VocabulariesTable }
-  - Statement:
-      - Effect: Allow
-        Action: 
-          - transcribe:StartTranscriptionJob
-          - transcribe:GetTranscriptionJob
-        Resource: '*'
-      - Effect: Allow
-        Action: lambda:InvokeFunction
-        Resource: 
-          - !GetAtt GenerateSummaryFunction.Arn
-          - !GetAtt SentimentAnalysisFunction.Arn
-          - !GetAtt SendEmailFunction.Arn
-```
-
-### Best Practices Implementate
-
-- ✅ **Environment Variables**: Nessun secret hardcoded, tutto da variabili ambiente
-- ✅ **Secrets Management**: API keys in DynamoDB (hashed), password temporanee Cognito
-- ✅ **CORS**: Configurato correttamente con header specifici
-- ✅ **Rate Limiting**: API Gateway throttling configurabile
-- ✅ **Input Validation**: Tutti gli input validati prima dell'elaborazione
-- ✅ **Error Handling**: Nessuna info sensibile negli errori esposti all'utente
-
----
-
-## 🎨 User Experience
-
-### Frontend Architecture
-
-```
-Deploy/frontend/
-├── public/
-│   ├── fonts/              # Poppins (Regular, Bold)
-│   └── img/                # Logo (PNG, SVG)
-├── src/
-│   ├── components/
-│   │   ├── AdminDashboard.jsx           # Dashboard admin/user
-│   │   ├── AdminManagement.jsx          # Gestione admin (per superadmin)
-│   │   ├── ResellersManagement.jsx      # CRUD reseller
-│   │   ├── SelectContext.jsx            # Context switching superadmin/reseller
-│   │   ├── SuperadminManagement.jsx     # Dashboard superadmin
-│   │   ├── TenantsManagement.jsx        # CRUD tenant
-│   │   ├── UserDashboard.jsx            # Dashboard utenti finali
-│   │   └── UsersManagement.jsx          # CRUD utenti Cognito
-│   ├── config/
-│   │   └── amplify.js                   # Configurazione Amplify/Cognito
-│   ├── utils/
-│   │   ├── apiInterceptor.js            # Aggiunge X-Tenant-Id header automaticamente
-│   │   ├── tenantContext.js             # Gestione context switching
-│   │   └── translations.js              # Traduzioni IT/EN
-│   ├── App.jsx                          # Main app con routing
-│   ├── main.jsx                         # Entry point
-│   └── index.css                        # Stili globali
-├── vite.config.js
-└── package.json
-```
-
-### Funzionalità per Ruolo
-
-#### 👑 **SUPERADMIN**
-
-**Dashboard:**
-- Overview completo della piattaforma
-- Statistiche aggregate di tutti i tenant
-- Lista tenant con possibilità di context switching
-
-**Gestione Tenant:**
-- Creazione tenant (nome, descrizione, admin email/password)
-- Associazione/disassociazione reseller (multipli)
-- Modifica settings tenant
-- Disattivazione/cancellazione tenant
-
-**Gestione Reseller:**
-- CRUD organizzazioni reseller
-- Visualizzazione tenant associati
-
-**Gestione Utenti:**
-- Creazione utenti con qualsiasi ruolo
-- Assegnazione tenant/reseller
-- Modifica email, ruolo, tenant
-- Cancellazione utenti
-- Visualizzazione completa User Pool Cognito
-
-**Context Switching:**
-- Selezione tenant dal menu dropdown
-- Visualizzazione dati come se fosse admin di quel tenant
-- Indicatore visivo "Visualizzando come: {Tenant}"
-
-**Gestione Licenze:**
-- Visualizzazione tutte le licenze
-- Modifica tipo licenza (BASE, R, S, R+S)
-- Attivazione/disattivazione licenze
-
-**Gestione Vocabolari:**
-- Upload vocabolari custom per tenant
-- Associazione vocabolario-tenant
-- Monitoraggio stato Transcribe
-
-#### 🏢 **RESELLER**
-
-**Dashboard:**
-- Statistiche aggregate dei propri tenant
-- Lista tenant gestiti
-
-**Gestione Tenant:**
-- Creazione tenant (automaticamente associati al reseller)
-- Modifica settings tenant propri
-- Disattivazione tenant propri
-
-**Gestione Utenti:**
-- Creazione admin per i propri tenant
-- Gestione utenti dei tenant propri
-- No accesso a utenti di altri reseller
-
-**Context Switching:**
-- Selezione tra i propri tenant
-- Visualizzazione dati specifici del tenant selezionato
-
-**Gestione Licenze:**
-- Visualizzazione licenze dei propri tenant
-- Modifica tipo licenza per i propri tenant
-
-#### 🔧 **ADMIN** (Tenant)
-
-**Dashboard:**
-- Statistiche del proprio tenant
-- Lista registrazioni del tenant
-- Filtri per sentiment, data, agente
-
-**Visualizzazione Registrazioni:**
-- Tabella paginata con:
-  - Data/ora
-  - Agente
-  - Numero chiamato
-  - Durata
-  - Sentiment (badge colorato)
-  - Azioni: Download audio, Download PDF
-- Search box per filtrare
-- Filtri per sentiment (ALL, POSITIVE, NEGATIVE, NEUTRAL, MIXED)
-
-**Gestione Utenti:**
-- Creazione utenti (role: user) per il proprio tenant
-- Modifica email utenti del tenant
-- Cancellazione utenti del tenant
-
-**Gestione Licenze:**
-- Visualizzazione licenza del proprio tenant
-- Richiesta upgrade (via ticket, non self-service)
-
-**Gestione Vocabolari:**
-- Upload vocabolari custom per il tenant
-- Gestione terminologie specifiche del dominio
-
-### Componenti UI Principali
-
-#### 1. **Login Page**
-```jsx
-- Email + Password
-- "Accedi" button
-- "Hai dimenticato la password?"
-- Supporto new password required (primo login)
-```
-
-#### 2. **SelectContext Component**
-```jsx
-// Per superadmin e reseller
-<select>
-  <option value="">-- Tutti i tenant --</option>
-  {tenants.map(t => (
-    <option value={t.tenantId}>{t.name}</option>
-  ))}
-</select>
-
-// Badge indicatore
-{isViewingAsTenant && (
-  <div class="context-indicator">
-    👁️ Visualizzando come: {selectedTenant.name}
-  </div>
-)}
-```
-
-#### 3. **AdminDashboard Component**
-
-**Sezione Statistiche:**
-```jsx
-<div className="stats-grid">
-  <StatCard 
-    title="Totale Registrazioni" 
-    value={stats.totalRecordings}
-    icon="🎙️"
-  />
-  <StatCard 
-    title="Durata Totale" 
-    value={formatDuration(stats.totalDuration)}
-    icon="⏱️"
-  />
-  <StatCard 
-    title="Sentiment Positivo" 
-    value={`${stats.sentimentBreakdown.POSITIVE}%`}
-    icon="😊"
-    color="green"
-  />
-  <StatCard 
-    title="Sentiment Negativo" 
-    value={`${stats.sentimentBreakdown.NEGATIVE}%`}
-    icon="😟"
-    color="red"
-  />
-</div>
-```
-
-**Tabella Registrazioni:**
-```jsx
-<table>
-  <thead>
-    <tr>
-      <th>Data/Ora</th>
-      <th>Agente</th>
-      <th>Numero</th>
-      <th>Durata</th>
-      <th>Sentiment</th>
-      <th>Azioni</th>
-    </tr>
-  </thead>
-  <tbody>
-    {recordings.map(rec => (
-      <tr>
-        <td>{formatDate(rec.timestamp)}</td>
-        <td>{rec.agentId}</td>
-        <td>{rec.remoteParty || 'N/A'}</td>
-        <td>{rec.callDuration}s</td>
-        <td>
-          <SentimentBadge sentiment={rec.sentiment} />
-        </td>
-        <td>
-          <button onClick={() => downloadRecording(rec.audioUrl)}>
-            🎵 Audio
-          </button>
-          {rec.pdfUrl && (
-            <button onClick={() => downloadRecording(rec.pdfUrl)}>
-              📄 PDF
-            </button>
-          )}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-```
-
-#### 4. **TenantsManagement Component**
-```jsx
-// Lista tenant
-<div className="tenant-card">
-  <h3>{tenant.name}</h3>
-  <p>{tenant.description}</p>
-  <div className="tenant-info">
-    <span>Admin: {tenant.adminEmail}</span>
-    <span>Status: {tenant.isActive ? '✅ Attivo' : '❌ Inattivo'}</span>
-    {tenant.resellerOrganizations?.map(r => (
-      <span>Reseller: {r.name}</span>
-    ))}
-  </div>
-  <div className="actions">
-    <button onClick={() => editTenant(tenant)}>✏️ Modifica</button>
-    <button onClick={() => associateReseller(tenant)}>🔗 Associa Reseller</button>
-    <button onClick={() => deleteTenant(tenant)}>🗑️ Elimina</button>
-  </div>
-</div>
-
-// Modal creazione
-<Modal open={showCreateModal}>
-  <form onSubmit={handleCreate}>
-    <input name="name" placeholder="Nome tenant" required />
-    <textarea name="description" placeholder="Descrizione" />
-    <input name="adminEmail" type="email" placeholder="Email admin" required />
-    <input name="adminPassword" type="password" placeholder="Password temporanea" required />
-    <select name="resellerId">
-      <option value="">-- Nessun reseller --</option>
-      {resellers.map(r => (
-        <option value={r.resellerId}>{r.name}</option>
-      ))}
-    </select>
-    <button type="submit">Crea Tenant</button>
-  </form>
-</Modal>
-```
-
-#### 5. **UsersManagement Component**
-```jsx
-// Tabella utenti
-<table>
-  <thead>
-    <tr>
-      <th>Email</th>
-      <th>Ruolo</th>
-      <th>Tenant</th>
-      <th>Reseller</th>
-      <th>Status</th>
-      <th>Azioni</th>
-    </tr>
-  </thead>
-  <tbody>
-    {users.map(user => (
-      <tr>
-        <td>{user.email}</td>
-        <td><RoleBadge role={user.role} /></td>
-        <td>{user.tenantName || 'N/A'}</td>
-        <td>{user.resellerName || 'N/A'}</td>
-        <td>{user.status}</td>
-        <td>
-          <button onClick={() => editUser(user)}>✏️</button>
-          <button onClick={() => deleteUser(user)}>🗑️</button>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-```
-
-### Design System
-
-**Palette Colori:**
-- Primary: `#2563eb` (Blue)
-- Success: `#10b981` (Green)
-- Warning: `#f59e0b` (Orange)
-- Danger: `#ef4444` (Red)
-- Neutral: `#6b7280` (Gray)
-
-**Tipografia:**
-- Font: Poppins (Regular: 400, Bold: 700)
-- Headings: Poppins Bold
-- Body: Poppins Regular
-
-**Sentiment Badges:**
-```jsx
-const sentimentColors = {
-  POSITIVE: { bg: '#d1fae5', text: '#065f46', emoji: '😊' },
-  NEGATIVE: { bg: '#fee2e2', text: '#991b1b', emoji: '😟' },
-  NEUTRAL: { bg: '#e5e7eb', text: '#374151', emoji: '😐' },
-  MIXED: { bg: '#fef3c7', text: '#92400e', emoji: '🤔' }
+Response:
+{
+  "user": {
+    "user_id": "...",
+    "email": "user@example.com",
+    "name": "...",
+    "tenant_id": "...",
+    "report_enabled": true,
+    "report_schedule": "0 9 * * 1-5",
+    "xml_endpoint": "https://...",
+    "created_at": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 
-### Responsive Design
+**API `/api/users/{user_id}/report-history`**:
+- Utente può visualizzare lo storico dei propri report inviati
+- Include timestamp, status (sent/failed), error_message
 
-- **Desktop**: Layout a griglia, sidebar navigation
-- **Tablet**: Layout adattivo, sidebar collassabile
-- **Mobile**: Stack verticale, menu hamburger
+#### 4. **Data Residency (Residenza Dati)**
 
-### Accessibilità (A11Y)
+**Region**: `eu-central-1` (Francoforte, Germania)
 
-- ✅ Semantic HTML (button, nav, main, section)
-- ✅ ARIA labels su icone e azioni
-- ✅ Contrast ratio conforme WCAG AA
-- ✅ Keyboard navigation
-- ✅ Focus visible
+Tutti i servizi deployati in EU:
+- ✅ Lambda: eu-central-1
+- ✅ DynamoDB: eu-central-1
+- ✅ Cognito: eu-central-1
+- ✅ Bedrock: eu-central-1
+- ✅ SES: eu-central-1
+- ✅ CloudWatch: eu-central-1
+- ✅ API Gateway: eu-central-1
+- ✅ Amplify: eu-central-1
+
+**Cross-Region**: ❌ Nessun dato lascia la EU
+
+#### 5. **Consent Management**
+
+**Report Scheduling**:
+```python
+user['report_enabled'] = True  # Opt-in esplicito
+user['report_schedule'] = "0 9 * * 1-5"  # Personalizzabile
+user['report_email'] = "user@example.com"  # Destinazione custom
+```
+
+**Disable Reports**:
+```http
+PUT /api/users/{user_id}
+{
+  "report_enabled": false  // User può disabilitare in qualsiasi momento
+}
+```
+
+### Logging e Audit
+
+#### 1. **CloudWatch Logs**
+
+**Retention**: 30 giorni (configurabile)
+
+**Log Groups**:
+- `/aws/lambda/maya-api-{env}`
+- `/aws/lambda/maya-report-generator-{env}`
+- `/aws/lambda/maya-email-sender-v2-{env}`
+
+**Log Level**: `INFO` (production), `DEBUG` (dev)
+
+**Dati Sensibili Esclusi**:
+- ❌ Password (mai loggati)
+- ❌ Cognito tokens (solo "Token present: true/false")
+- ❌ XML content (troppo grande e potenzialmente sensibile)
+- ✅ User IDs, email (per troubleshooting)
+- ✅ Timestamps, status, error messages
+
+#### 2. **Audit Trail**
+
+**Tracking Modifiche**:
+```python
+# Ogni record DynamoDB include:
+{
+  "created_at": "2024-01-15T10:30:00Z",  # Timestamp creazione
+  "updated_at": "2024-01-20T14:25:00Z",  # Ultimo update
+  "created_by": "admin@example.com",     # Chi ha creato
+  "updated_by": "superadmin@example.com" # Chi ha modificato
+}
+```
+
+### IAM e Least Privilege
+
+#### 1. **Lambda Execution Roles**
+
+**ApiFunction Role**:
+```yaml
+Policies:
+  - DynamoDBCrudPolicy:
+      TableName: maya-tenants-{env}
+  - DynamoDBCrudPolicy:
+      TableName: maya-users-{env}
+  - DynamoDBCrudPolicy:
+      TableName: maya-report-history-{env}
+  - DynamoDBCrudPolicy:
+      TableName: maya-reseller-*
+  - Statement:
+    - Effect: Allow
+      Action:
+        - cognito-idp:AdminCreateUser
+        - cognito-idp:AdminDeleteUser
+        - cognito-idp:AdminUpdateUserAttributes
+        - cognito-idp:AdminGetUser
+        - cognito-idp:ListUsers
+        - cognito-idp:AdminAddUserToGroup
+        - cognito-idp:AdminRemoveUserFromGroup
+        - cognito-idp:AdminSetUserPassword
+      Resource: !GetAtt CognitoUserPool.Arn
+  - Statement:
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource: !GetAtt ReportGeneratorFunction.Arn
+```
+
+**ReportGeneratorFunction Role**:
+```yaml
+Policies:
+  - DynamoDBCrudPolicy:
+      TableName: maya-users-{env}
+  - DynamoDBCrudPolicy:
+      TableName: maya-report-history-{env}
+  - Statement:
+    - Effect: Allow
+      Action: bedrock:InvokeModel
+      Resource: arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0
+  - Statement:
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:maya-email-sender-v2-${Environment}"
+```
+
+**EmailSenderFunction Role**:
+```yaml
+Policies:
+  - DynamoDBCrudPolicy:
+      TableName: maya-report-history-{env}
+  - Statement:
+    - Effect: Allow
+      Action:
+        - ses:SendEmail
+        - ses:SendRawEmail
+      Resource: "*"  # SES requires wildcard for verified identities
+```
+
+#### 2. **API Gateway Resource Policy**
+
+**CORS Policy**:
+```yaml
+Cors:
+  AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+  AllowHeaders: "'Content-Type,Authorization,X-Requested-With'"
+  AllowOrigin: "'*'"  # Production: specify exact domain
+  AllowCredentials: false
+```
+
+**Rate Limiting**:
+- Default throttle: 10,000 requests/second
+- Burst: 5,000 requests
+- Per-user throttle: Configurabile con Usage Plans
+
+### Best Practices Implementate
+
+#### 1. **Code Security**
+
+✅ **Input Validation**:
+```python
+def validate_email(email: str) -> bool:
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_report_schedule(schedule: str) -> bool:
+    # Validate cron expression format
+    parts = schedule.split()
+    if len(parts) != 5:
+        return False
+    # Additional cron validation...
+    return True
+```
+
+✅ **Error Handling**:
+```python
+try:
+    result = process_user_data(user_input)
+except ValidationError as e:
+    logger.error(f"Validation failed: {str(e)}")
+    return {'statusCode': 400, 'body': json.dumps({'error': 'Invalid input'})}
+except Exception as e:
+    logger.error(f"Unexpected error: {str(e)}")
+    return {'statusCode': 500, 'body': json.dumps({'error': 'Internal server error'})}
+```
+
+✅ **SQL Injection Prevention**:
+- Utilizzo DynamoDB (NoSQL) con AWS SDK
+- Parametrizzazione automatica query
+- No raw SQL/NoSQL queries
+
+#### 2. **Network Security**
+
+✅ **Public Access Block** (future S3 bucket):
+```yaml
+PublicAccessBlockConfiguration:
+  BlockPublicAcls: true
+  BlockPublicPolicy: true
+  IgnorePublicAcls: true
+  RestrictPublicBuckets: true
+```
+
+✅ **VPC (Optional)**:
+- Lambda funzioni possono essere deployate in VPC private
+- NAT Gateway per accesso internet outbound
+- Security Groups per controllo traffico
+
+#### 3. **Compliance Certifications AWS**
+
+AWS Services utilizzati sono conformi a:
+- ✅ **ISO 27001** (Security Management)
+- ✅ **ISO 27017** (Cloud Security)
+- ✅ **ISO 27018** (Cloud Privacy)
+- ✅ **SOC 2 Type II** (Security, Availability, Confidentiality)
+- ✅ **GDPR** (EU Data Protection)
+- ✅ **PCI DSS** (Payment Card Industry - if needed)
+
+---
+
+## 👤 User Experience
+
+### Dashboard Web
+
+#### 1. **Autenticazione**
+
+**Login Flow**:
+```
+1. User visita https://app.mayaanalytics.com
+2. Vede LoginForm
+3. Inserisce email + password
+4. Cognito autentica
+5. Se primo accesso → ChangePasswordForm (password temporanea)
+6. Altrimenti → Redirect dashboard
+```
+
+**Forgot Password**:
+- Click "Password dimenticata?"
+- Inserisci email
+- Cognito invia codice verifica via email
+- Inserisci codice + nuova password
+- Password resettata
+
+**Session Management**:
+- Access token valido 60 minuti
+- Refresh automatico in background
+- Logout manuale disponibile in header
+
+#### 2. **Role-Based UI**
+
+**SuperAdmin Dashboard**:
+```
+┌────────────────────────────────────────────────┐
+│  Maya Analytics         👤 admin@example.com  │
+│                         [Context: Global ▼]    │
+├────────────────────────────────────────────────┤
+│  📊 Dashboard                                  │
+│  👥 Gestione Utenti      [+ Crea Utente]      │
+│  🏢 Gestione Tenant      [+ Crea Tenant]      │
+│  🤝 Gestione Reseller    [+ Crea Reseller]    │
+│  👔 Gestione SuperAdmin  [+ Crea SuperAdmin]  │
+│  🏛️  Organizzazioni      [+ Crea Org]         │
+│  📧 Report History                             │
+└────────────────────────────────────────────────┘
+```
+
+**Reseller Dashboard**:
+```
+┌────────────────────────────────────────────────┐
+│  Maya Analytics         👤 reseller@co.com    │
+│                         [Context: Acme Inc ▼]  │
+├────────────────────────────────────────────────┤
+│  📊 Dashboard                                  │
+│  🏢 I Miei Tenant        [+ Crea Tenant]      │
+│  🏛️  Le Mie Org          [+ Crea Org]         │
+│  👥 Utenti Tenant        [+ Crea Admin/User]  │
+│  📧 Report History                             │
+└────────────────────────────────────────────────┘
+```
+
+**Admin Dashboard**:
+```
+┌────────────────────────────────────────────────┐
+│  Maya Analytics         👤 admin@company.com  │
+├────────────────────────────────────────────────┤
+│  📊 Dashboard                                  │
+│  👥 Gestione Utenti      [+ Crea Utente]      │
+│  📧 Report History                             │
+│  ⚙️  Connettori XML                            │
+└────────────────────────────────────────────────┘
+```
+
+**User Dashboard**:
+```
+┌────────────────────────────────────────────────┐
+│  Maya Analytics         👤 user@company.com   │
+├────────────────────────────────────────────────┤
+│                                                │
+│  ⚠️  Accesso non disponibile                  │
+│                                                │
+│  Gli utenti finali ricevono solo report       │
+│  automatici via email.                         │
+│  Non è necessario accedere al sistema.         │
+│                                                │
+└────────────────────────────────────────────────┘
+```
+
+#### 3. **Gestione Utenti**
+
+**Tabella Utenti**:
+```
+┌───────────────────────────────────────────────────────────┐
+│  Gestione Utenti                    [+ Crea Utente]      │
+├───────────────────────────────────────────────────────────┤
+│  🔍 Cerca: [___________]  Tenant: [Tutti ▼]  Ruolo: [Tutti ▼] │
+├───────────────────────────────────────────────────────────┤
+│  Nome          Email              Tenant    Report  [Azioni] │
+│  ────────────────────────────────────────────────────────── │
+│  Mario Rossi   mario@acme.com    Acme Inc  ✅      [✏️][🗑️] │
+│  Laura Bianchi laura@acme.com    Acme Inc  ❌      [✏️][🗑️] │
+│  ...                                                         │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Modal Creazione Utente**:
+```
+┌──────────────────────────────────────┐
+│  Crea Nuovo Utente            [✕]   │
+├──────────────────────────────────────┤
+│  Nome: [____________________]        │
+│  Email: [____________________]       │
+│  Tenant: [Seleziona tenant ▼]       │
+│  Password: [____________________]    │
+│                                      │
+│  📊 Configurazione Report            │
+│  ☑️ Abilita Report Automatici       │
+│  Email Report: [same as user email ▼]│
+│  Schedule: [0 9 * * 1-5 ▼]          │
+│            (Lun-Ven ore 9:00)       │
+│                                      │
+│  🔗 Connettore XML                   │
+│  Endpoint: [____________________]    │
+│  Token: [____________________]       │
+│                                      │
+│  [Annulla]  [Crea Utente]           │
+└──────────────────────────────────────┘
+```
+
+**Schedule Picker**:
+```
+Frequenza: [Giornaliero ▼]
+           - Giornaliero
+           - Settimanale
+           - Mensile
+
+Orario: [09:00 ▼]
+Giorni: ☑️ Lun ☑️ Mar ☑️ Mer ☑️ Gio ☑️ Ven ☐ Sab ☐ Dom
+
+Preview: "Ogni giorno lavorativo alle 9:00"
+Cron: 0 9 * * 1-5
+```
+
+#### 4. **Context Selector (SuperAdmin/Reseller)**
+
+**Flow**:
+```
+1. SuperAdmin/Reseller effettua login
+2. Vede Context Selector dopo autenticazione:
+
+┌────────────────────────────────────────────┐
+│  Seleziona Contesto                        │
+├────────────────────────────────────────────┤
+│  🌐 Visualizzazione Globale                │
+│     Gestisci tutti i tenant e reseller     │
+│     [Seleziona]                            │
+├────────────────────────────────────────────┤
+│  🏢 Tenant Specifici                       │
+│                                            │
+│  ○ Acme Inc                                │
+│  ○ Beta Corp                               │
+│  ○ Gamma Ltd                               │
+│     [Seleziona]                            │
+└────────────────────────────────────────────┘
+
+3. Scelta salvata in sessionStorage
+4. Header dashboard mostra context corrente
+5. Può cambiare context da dropdown in header
+```
+
+#### 5. **Report Email UX**
+
+**Email Template**:
+```html
+┌─────────────────────────────────────────────────────────┐
+│  From: Maya Analytics <noreply@neuralect.it>           │
+│  To: user@company.com                                   │
+│  Subject: 🤖 Maya Analytics - Report ACD Acme Inc      │
+│          (15 Gennaio 2024)                              │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  🤖 MAYA ANALYTICS - REPORT GIORNALIERO                │
+│                                                         │
+│  Ciao Mario,                                            │
+│                                                         │
+│  Ecco il tuo report analytics per Acme Inc - ACD Queue │
+│  generato il 15 Gennaio 2024 alle 09:00.              │
+│                                                         │
+│  ═══════════════════════════════════════════════════    │
+│  📊 ANALISI AI (powered by Claude 3.5 Sonnet)          │
+│  ═══════════════════════════════════════════════════    │
+│                                                         │
+│  🎯 INSIGHTS PRINCIPALI                                │
+│  • Tasso di risposta eccellente (92.5%)                │
+│  • Picco chiamate tra 10:00-12:00                      │
+│  • Tempo medio attesa ottimale (18 secondi)            │
+│                                                         │
+│  📈 TREND SETTIMANALE                                   │
+│  • +15% chiamate rispetto a lunedì scorso              │
+│  • Miglioramento tempo risposta del 8%                 │
+│                                                         │
+│  ⚠️ AREE DI ATTENZIONE                                 │
+│  • Chiamate abbandonate in aumento dopo 30s attesa     │
+│  • Considerare aumento personale ore 11:00-12:00       │
+│                                                         │
+│  💡 RACCOMANDAZIONI                                     │
+│  • Monitorare picco mattutino                          │
+│  • Ottimizzare routing coda prioritaria                │
+│                                                         │
+│  ═══════════════════════════════════════════════════    │
+│  📈 GRAFICI ANALYTICS                                   │
+│  ═══════════════════════════════════════════════════    │
+│                                                         │
+│  [Grafico trend chiamate ultimi 7 giorni - line chart] │
+│  [Heatmap oraria distribuzione chiamate - color grid]  │
+│                                                         │
+│  ═══════════════════════════════════════════════════    │
+│  📊 METRICHE DETTAGLIATE                               │
+│  ═══════════════════════════════════════════════════    │
+│                                                         │
+│  Totale Chiamate: 1,234                                │
+│  Risposte: 1,142 (92.5%)                               │
+│  Perse: 92 (7.5%)                                      │
+│  Tempo Medio Attesa: 18s                               │
+│  Durata Media: 4m 32s                                  │
+│                                                         │
+│  ═══════════════════════════════════════════════════    │
+│                                                         │
+│  🔗 Accedi alla dashboard per maggiori dettagli        │
+│     https://app.mayaanalytics.com                      │
+│                                                         │
+│  ────────────────────────────────────────────────       │
+│  Powered by Maya Analytics | Neuralect                 │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 6. **Responsive Design**
+
+**Mobile-First Approach**:
+- ✅ TailwindCSS responsive utilities
+- ✅ Hamburger menu per mobile
+- ✅ Touch-friendly buttons (min 44x44px)
+- ✅ Tables scrollano orizzontalmente
+- ✅ Modals full-screen su mobile
+
+**Breakpoints**:
+```css
+sm: 640px   /* Tablets portrait */
+md: 768px   /* Tablets landscape */
+lg: 1024px  /* Desktop */
+xl: 1280px  /* Large desktop */
+2xl: 1536px /* Extra large */
+```
+
+#### 7. **Accessibility**
+
+✅ **WCAG 2.1 Level AA**:
+- Contrast ratio ≥ 4.5:1 per testo
+- Focus indicators visibili
+- Keyboard navigation completa
+- ARIA labels per screen readers
+- Form validation con messaggi chiari
+
+✅ **Semantic HTML**:
+```tsx
+<nav aria-label="Main navigation">
+<main role="main">
+<button aria-label="Create new user">
+<table role="table" aria-label="Users list">
+```
+
+#### 8. **Loading States & Feedback**
+
+**Loading Spinners**:
+```tsx
+{loading ? (
+  <div className="flex justify-center items-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+    <p>Caricamento...</p>
+  </div>
+) : (
+  <UserTable users={users} />
+)}
+```
+
+**Toast Notifications**:
+```
+┌──────────────────────────────────┐
+│  ✅ Utente creato con successo! │  (Auto-dismiss 3s)
+└──────────────────────────────────┘
+
+┌──────────────────────────────────┐
+│  ❌ Errore: Email già esistente  │  (Manual dismiss)
+└──────────────────────────────────┘
+```
+
+**Confirmation Dialogs**:
+```
+┌─────────────────────────────────────┐
+│  Conferma Eliminazione        [✕]  │
+├─────────────────────────────────────┤
+│  Sei sicuro di voler eliminare      │
+│  l'utente "Mario Rossi"?            │
+│                                     │
+│  ⚠️ Questa azione è irreversibile  │
+│                                     │
+│  [Annulla]  [🗑️ Elimina]          │
+└─────────────────────────────────────┘
+```
+
+#### 9. **Error Handling UX**
+
+**Empty States**:
+```
+┌─────────────────────────────────────┐
+│  👥 Gestione Utenti                │
+├─────────────────────────────────────┤
+│                                     │
+│          📭                         │
+│     Nessun utente trovato          │
+│                                     │
+│  Inizia creando il primo utente    │
+│  [+ Crea Utente]                   │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Error Pages**:
+```
+┌─────────────────────────────────────┐
+│          ⚠️                         │
+│     Errore di Connessione          │
+│                                     │
+│  Non riusciamo a connetterci       │
+│  al server. Riprova più tardi.     │
+│                                     │
+│  [🔄 Riprova]                      │
+└─────────────────────────────────────┘
+```
+
+#### 10. **Performance UX**
+
+**Optimization Strategies**:
+- ✅ Next.js 16 Server Components (RSC)
+- ✅ Incremental Static Regeneration (ISR)
+- ✅ Image optimization (next/image)
+- ✅ Code splitting automatico
+- ✅ Prefetching automatico link
+- ✅ React 19 Suspense boundaries
+
+**Loading Performance**:
+- First Contentful Paint (FCP): < 1.8s
+- Largest Contentful Paint (LCP): < 2.5s
+- Time to Interactive (TTI): < 3.5s
 
 ---
 
@@ -883,828 +1169,718 @@ const sentimentColors = {
 
 ### Prerequisiti
 
-#### Software Richiesto
+#### 1. **AWS Account Setup**
+
+**Requisiti**:
+- AWS Account attivo
+- AWS CLI v2 installato
+- SAM CLI installato
+- Permessi IAM necessari:
+  - CloudFormation (CreateStack, UpdateStack, DeleteStack)
+  - Lambda (CreateFunction, UpdateFunctionCode, etc.)
+  - API Gateway (CreateRestApi, etc.)
+  - DynamoDB (CreateTable, etc.)
+  - Cognito (CreateUserPool, etc.)
+  - IAM (CreateRole, AttachRolePolicy)
+  - S3 (CreateBucket - per SAM deployment)
+
+**Installazione AWS CLI**:
 ```bash
-# AWS CLI
-aws --version  # >= 2.x
+# Windows (PowerShell as Admin)
+msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
 
-# AWS SAM CLI
-sam --version  # >= 1.x
+# Mac
+brew install awscli
 
-# Node.js
-node --version  # >= 16.x
-npm --version   # >= 8.x
+# Linux
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
 ```
 
-#### Configurazione AWS
-
-##### 1. **Configurazione Profilo AWS**
+**Configurazione Credenziali**:
 ```bash
-# Lista profili esistenti
-aws configure list-profiles
+aws configure
+# AWS Access Key ID: AKIA...
+# AWS Secret Access Key: ...
+# Default region name: eu-central-1
+# Default output format: json
 
-# Imposta profilo per la sessione (Windows CMD)
-set AWS_PROFILE=nome-profilo
-
-# Imposta profilo per la sessione (Linux/Mac)
-export AWS_PROFILE=nome-profilo
-
-# Verifica identità
+# Verifica configurazione
 aws sts get-caller-identity
 ```
 
-##### 2. **Configurazione AWS SSO (se applicabile)**
+**Installazione SAM CLI**:
 ```bash
-# Prima volta: configura SSO
-aws configure sso
+# Windows (PowerShell as Admin)
+choco install aws-sam-cli
 
-# Login con SSO
-aws sso login --profile nome-profilo
+# Mac
+brew install aws-sam-cli
+
+# Linux
+pip install aws-sam-cli
+
+# Verifica installazione
+sam --version
+# SAM CLI, version 1.x.x
 ```
 
-##### 3. **Verifica Regione**
+#### 2. **Amazon SES Setup** (Critical!)
+
+**Email Verification**:
 ```bash
-# Il progetto usa eu-central-1 (Francoforte) di default
-aws configure get region --profile nome-profilo
-# Output atteso: eu-central-1
+# 1. Verifica sender email
+aws ses verify-email-identity --email-address noreply@neuralect.it --region eu-central-1
+
+# 2. Check inbox per email conferma
+# Click link verifica
+
+# 3. Verifica status
+aws ses get-identity-verification-attributes \
+    --identities noreply@neuralect.it \
+    --region eu-central-1
+
+# Output:
+# {
+#   "VerificationAttributes": {
+#     "noreply@neuralect.it": {
+#       "VerificationStatus": "Success"
+#     }
+#   }
+# }
 ```
+
+**Domain Verification** (Recommended for production):
+```bash
+# 1. Verifica dominio completo
+aws ses verify-domain-identity --domain neuralect.it --region eu-central-1
+
+# 2. Aggiungi record TXT DNS:
+# Name: _amazonses.neuralect.it
+# Type: TXT
+# Value: [token from AWS response]
+
+# 3. Configura DKIM (Domain Keys Identified Mail)
+aws ses set-identity-dkim-enabled \
+    --identity neuralect.it \
+    --dkim-enabled \
+    --region eu-central-1
+
+# 4. Aggiungi 3 record CNAME DNS per DKIM
+```
+
+**Sandbox vs Production**:
+```bash
+# Check sandbox status
+aws sesv2 get-account --region eu-central-1
+
+# Se in sandbox (default):
+# - Puoi inviare solo a email verificate
+# - Limite: 200 email/giorno, 1 email/secondo
+
+# Request production access:
+aws support create-case \
+    --subject "Request to move out of SES Sandbox" \
+    --communication-body "We need to send automated analytics reports to our customers..." \
+    --category-code "service-limit-increase" \
+    --service-code "ses"
+```
+
+**IMPORTANT**: Durante sviluppo, verifica manualmente le email dei destinatari test!
 
 ### Deploy Backend (AWS SAM)
 
-#### 1. **Preparazione**
+#### 1. **Build Lambda Layers**
 
 ```bash
-# Naviga alla directory Deploy
 cd Deploy
 
-# Installa dipendenze Lambda (se modificato package.json)
-cd src/{lambda-function}
-npm install
-cd ../..
-```
-
-#### 2. **Build**
-
-```bash
-# Build con SAM
+# Build tutte le funzioni Lambda
 sam build
 
-# Oppure build con container (per dipendenze native)
+# Output:
+# Building codeuri: src/api runtime: python3.13 ...
+# Building codeuri: src/report-generator runtime: python3.13 ...
+# Building codeuri: src/email-sender runtime: python3.13 ...
+# Build Succeeded
+```
+
+**Troubleshooting Build**:
+```bash
+# Se errore "requirements.txt not found":
+cd src/report-generator
+pip install -r requirements.txt --target .
+
+# Se errore matplotlib:
+# matplotlib richiede compilazione C, usa Lambda Layer o Docker build
 sam build --use-container
 ```
 
-**Output atteso:**
-```
-Build Succeeded
+#### 2. **Deploy Stack**
 
-Built Artifacts  : .aws-sam/build
-Built Template   : .aws-sam/build/template.yaml
-```
-
-#### 3. **Deploy Prima Volta (Guided)**
-
+**Prima Deploy**:
 ```bash
-sam deploy --guided --profile nome-profilo
+sam deploy --guided
+
+# Prompt interattivo:
+# Stack Name [maya-analytics]: maya-analytics-prod
+# AWS Region [eu-central-1]: eu-central-1
+# Parameter Environment [prod]: prod
+# Parameter ProjectName []: MayaAnalytics
+# Confirm changes before deploy [Y/n]: Y
+# Allow SAM CLI IAM role creation [Y/n]: Y
+# Allow Lambda function url authorization [Y/n]: N
+# Disable rollback [y/N]: N
+# Save arguments to configuration file [Y/n]: Y
+# SAM configuration file [samconfig.toml]: samconfig.toml
+# SAM configuration environment [default]: default
+
+# Deploy inizia...
+# Creazione stack CloudFormation...
+# ⏳ Creazione risorse (10-15 minuti prima volta)
 ```
 
-**Parametri richiesti:**
-
-| Parametro | Valore | Descrizione |
-|-----------|--------|-------------|
-| **Stack Name** | `speech-to-text-multitenant` | Nome dello stack CloudFormation |
-| **AWS Region** | `eu-central-1` | Regione di deploy |
-| **Environment** | `dev` o `prod` | Ambiente |
-| **RetentionDays** | `30` | Giorni di retention dati |
-| **EnableVpc** | `false` | Abilita VPC (false per ridurre costi) |
-| **ProjectName** | `ProjectSTT` | Tag per cost tracking |
-| **Confirm changes** | `Y` | Conferma changeset |
-| **Allow SAM CLI IAM role creation** | `Y` | Permetti creazione ruoli IAM |
-| **Save arguments to config** | `Y` | Salva config in samconfig.toml |
-
-#### 4. **Deploy Successivi**
-
+**Deploy Successivi** (più veloci):
 ```bash
-# Deploy senza guided (usa samconfig.toml)
-sam deploy --profile nome-profilo
+# Usa configurazione salvata
+sam deploy
+
+# Oppure specifica environment
+sam deploy --parameter-overrides Environment=dev
+
+# Oppure deploy rapido senza changeset
+sam deploy --no-confirm-changeset
 ```
 
-#### 5. **Verifica Deploy**
+**Deploy Output**:
+```yaml
+CloudFormation outputs from deployed stack
+-----------------------------------------------
+Outputs:
+-----------------------------------------------
+Key: ApiUrl
+Description: API Gateway URL
+Value: https://78jt5iyn1f.execute-api.eu-central-1.amazonaws.com/Prod
 
+Key: UserPoolId
+Description: Cognito User Pool ID
+Value: eu-central-1_eIs0HT7aN
+
+Key: UserPoolClientId
+Description: Cognito User Pool Client ID
+Value: 41erklu7iorpilb2dn98avf76f
+
+Key: Region
+Description: AWS Region
+Value: eu-central-1
+-----------------------------------------------
+```
+
+**Salva questi valori**: Servono per configurare il frontend!
+
+#### 3. **Post-Deploy Configuration**
+
+**Crea SuperAdmin Iniziale**:
 ```bash
-# Lista stack
-aws cloudformation describe-stacks \
-  --stack-name speech-to-text-multitenant \
-  --query 'Stacks[0].StackStatus' \
-  --profile nome-profilo
+# 1. Crea utente Cognito
+aws cognito-idp admin-create-user \
+    --user-pool-id eu-central-1_eIs0HT7aN \
+    --username admin@neuralect.it \
+    --user-attributes Name=email,Value=admin@neuralect.it Name=email_verified,Value=true \
+    --temporary-password TempPass123! \
+    --message-action SUPPRESS \
+    --region eu-central-1
 
-# Output atteso: "CREATE_COMPLETE" o "UPDATE_COMPLETE"
+# 2. Aggiungi a gruppo SuperAdmin
+aws cognito-idp admin-add-user-to-group \
+    --user-pool-id eu-central-1_eIs0HT7aN \
+    --username admin@neuralect.it \
+    --group-name SuperAdmin \
+    --region eu-central-1
 
-# Ottieni outputs (API endpoints, etc)
-aws cloudformation describe-stacks \
-  --stack-name speech-to-text-multitenant \
-  --query 'Stacks[0].Outputs' \
-  --profile nome-profilo
+# 3. Crea record DynamoDB
+aws dynamodb put-item \
+    --table-name maya-users-prod \
+    --item '{
+        "user_id": {"S": "[cognito-sub-from-previous-command]"},
+        "tenant_id": {"S": "system"},
+        "email": {"S": "admin@neuralect.it"},
+        "name": {"S": "Super Admin"},
+        "role": {"S": "SuperAdmin"},
+        "created_at": {"S": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}
+    }' \
+    --region eu-central-1
+
+# 4. Login e cambio password
+# Vai a frontend, login con admin@neuralect.it / TempPass123!
+# Sistema chiederà cambio password obbligatorio
 ```
 
-**Outputs importanti:**
-```json
-[
-  {
-    "OutputKey": "AdminApiEndpoint",
-    "OutputValue": "https://xxx.execute-api.eu-central-1.amazonaws.com/dev"
-  },
-  {
-    "OutputKey": "ApiEndpoint",
-    "OutputValue": "https://yyy.execute-api.eu-central-1.amazonaws.com/dev"
-  },
-  {
-    "OutputKey": "CognitoUserPoolId",
-    "OutputValue": "eu-central-1_XXXXXXXXX"
-  },
-  {
-    "OutputKey": "CognitoUserPoolClientId",
-    "OutputValue": "xxxxxxxxxxxxxxxxxxxxxxxxxx"
-  }
-]
+**Verifica Deploy**:
+```bash
+# Test API Gateway
+curl https://78jt5iyn1f.execute-api.eu-central-1.amazonaws.com/Prod/
+
+# Test Lambda
+aws lambda invoke \
+    --function-name maya-api-prod \
+    --payload '{"httpMethod":"GET","path":"/"}' \
+    --region eu-central-1 \
+    response.json
+
+cat response.json
+
+# Check CloudWatch Logs
+aws logs tail /aws/lambda/maya-api-prod --follow
 ```
 
 ### Deploy Frontend (AWS Amplify)
 
-#### 1. **Configurazione Amplify**
+#### 1. **Configura Repository Git**
 
-Aggiorna `Deploy/frontend/src/config/amplify.js` con gli outputs dello stack:
-
-```javascript
-export const amplifyConfig = { 
-  Auth: { 
-    Cognito: { 
-      userPoolId: 'eu-central-1_XXXXXXXXX',      // Da CloudFormation Output
-      userPoolClientId: 'xxxxxxxxxxxxxxxxxx',    // Da CloudFormation Output
-      region: 'eu-central-1', 
-      signUpVerificationMethod: 'code', 
-      loginWith: { 
-        email: true, 
-      }, 
-    } 
-  } 
-}; 
-```
-
-#### 2. **Build Locale (Test)**
-
+**Push Codice a GitHub**:
 ```bash
 cd Deploy/frontend
 
-# Installa dipendenze
-npm ci
+# Inizializza git (se non già fatto)
+git init
+git add .
+git commit -m "Initial commit"
 
-# Build
-npm run build
+# Crea repository GitHub
+# https://github.com/new → "mayanalytics-frontend"
 
-# Test locale
-npm run dev
-# Apri http://localhost:5173
+# Push
+git remote add origin https://github.com/your-username/mayanalytics-frontend.git
+git branch -M main
+git push -u origin main
 ```
 
-#### 3. **Deploy su AWS Amplify Console**
+#### 2. **Crea App Amplify**
 
-**Opzione A: Connessione GitHub/GitLab (CI/CD automatico)**
+**Via AWS Console**:
+```
+1. Vai a AWS Amplify Console
+   https://console.aws.amazon.com/amplify/
 
-1. Accedi a [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
 2. Click "New app" → "Host web app"
-3. Connetti repository GitHub/GitLab
-4. Seleziona repository e branch
-5. Configura build settings:
-   - Build command: `npm ci && npm run build`
-   - Base directory: `Deploy/frontend`
-   - Artifacts baseDirectory: `dist`
-6. Click "Save and deploy"
 
-**Opzione B: Deploy Manuale**
+3. Seleziona "GitHub"
+   - Autorizza AWS Amplify ad accedere GitHub
+   - Seleziona repository "mayanalytics-frontend"
+   - Seleziona branch "main"
 
-```bash
-cd Deploy/frontend
+4. App settings:
+   Name: maya-analytics-frontend
+   Environment: prod
+   
+5. Build settings (auto-detected da amplify.yml):
+   ✅ amplify.yml trovato
+   
+6. Advanced settings:
+   Environment variables:
+   - NEXT_PUBLIC_API_URL = https://78jt5iyn1f.execute-api.eu-central-1.amazonaws.com/Prod
+   - NEXT_PUBLIC_COGNITO_USER_POOL_ID = eu-central-1_eIs0HT7aN
+   - NEXT_PUBLIC_COGNITO_CLIENT_ID = 41erklu7iorpilb2dn98avf76f
+   - NEXT_PUBLIC_COGNITO_REGION = eu-central-1
 
-# Installa Amplify CLI
-npm install -g @aws-amplify/cli
-
-# Inizializza Amplify
-amplify init
-
-# Configura hosting
-amplify add hosting
-
-# Publish
-amplify publish
+7. Click "Save and deploy"
 ```
 
-**Opzione C: S3 + CloudFront (Alternativa)**
-
+**Via AWS CLI**:
 ```bash
-# Build
-npm run build
+# Crea app
+aws amplify create-app \
+    --name maya-analytics-frontend \
+    --repository https://github.com/your-username/mayanalytics-frontend \
+    --platform WEB \
+    --oauth-token ghp_YOUR_GITHUB_TOKEN \
+    --region eu-central-1
 
-# Carica su S3
-aws s3 sync dist/ s3://nome-bucket-frontend/ --profile nome-profilo
+# Crea branch
+aws amplify create-branch \
+    --app-id YOUR_APP_ID \
+    --branch-name main \
+    --enable-auto-build \
+    --region eu-central-1
 
-# Crea CloudFront distribution manualmente nella console
-# Configura origin = S3 bucket, default root object = index.html
+# Aggiungi environment variables
+aws amplify update-app \
+    --app-id YOUR_APP_ID \
+    --environment-variables \
+        NEXT_PUBLIC_API_URL=https://78jt5iyn1f.execute-api.eu-central-1.amazonaws.com/Prod,\
+        NEXT_PUBLIC_COGNITO_USER_POOL_ID=eu-central-1_eIs0HT7aN,\
+        NEXT_PUBLIC_COGNITO_CLIENT_ID=41erklu7iorpilb2dn98avf76f,\
+        NEXT_PUBLIC_COGNITO_REGION=eu-central-1 \
+    --region eu-central-1
+
+# Start build
+aws amplify start-job \
+    --app-id YOUR_APP_ID \
+    --branch-name main \
+    --job-type RELEASE \
+    --region eu-central-1
 ```
 
-#### 4. **Verifica Frontend**
+#### 3. **Monitora Build**
 
-- Accedi all'URL Amplify (es. `https://main.xxx.amplifyapp.com`)
-- Verifica login con Cognito
-- Controlla DevTools per errori API
+**Build Progress**:
+```
+Amplify Console → maya-analytics-frontend → main
 
-### Post-Deploy Configuration
+Build Log:
+┌─────────────────────────────────────┐
+│  # Provision (1 min)                │
+│  ✅ Container provisioned           │
+│                                     │
+│  # Build (3-5 min)                  │
+│  ✅ npm ci                          │
+│  ✅ npm run build                   │
+│                                     │
+│  # Deploy (1 min)                   │
+│  ✅ Deploy to CloudFront            │
+│                                     │
+│  # Verify (30s)                     │
+│  ✅ Health check passed             │
+└─────────────────────────────────────┘
 
-#### 1. **Crea Utente Superadmin Iniziale**
-
-```bash
-# Via AWS Console Cognito o AWS CLI
-aws cognito-idp admin-create-user \
-  --user-pool-id eu-central-1_XXXXXXXXX \
-  --username superadmin@yourdomain.com \
-  --user-attributes \
-    Name=email,Value=superadmin@yourdomain.com \
-    Name=email_verified,Value=true \
-    Name=custom:role,Value=superadmin \
-  --temporary-password "TempPassword123!" \
-  --message-action SUPPRESS \
-  --profile nome-profilo
-
-# Imposta password permanente
-aws cognito-idp admin-set-user-password \
-  --user-pool-id eu-central-1_XXXXXXXXX \
-  --username superadmin@yourdomain.com \
-  --password "YourSecurePassword123!" \
-  --permanent \
-  --profile nome-profilo
+App URL: https://main.d1234abcdefg.amplifyapp.com
 ```
 
-#### 2. **Configura Amazon SES per Email**
-
+**Troubleshooting Build**:
 ```bash
-# Verifica dominio email
-aws ses verify-domain-identity \
-  --domain yourdomain.com \
-  --region eu-central-1 \
-  --profile nome-profilo
+# Se build fallisce, verifica log:
+aws amplify get-job \
+    --app-id YOUR_APP_ID \
+    --branch-name main \
+    --job-id JOB_ID \
+    --region eu-central-1
 
-# Oppure verifica singola email (per test)
-aws ses verify-email-identity \
-  --email-address noreply@yourdomain.com \
-  --region eu-central-1 \
-  --profile nome-profilo
+# Errori comuni:
+# 1. Environment variables mancanti
+#    → Aggiungi in Amplify Console → Environment variables
 
-# Controlla stato verifica
-aws ses get-identity-verification-attributes \
-  --identities yourdomain.com \
-  --region eu-central-1 \
-  --profile nome-profilo
+# 2. Build timeout
+#    → Aumenta timeout in amplify.yml
 
-# Richiedi uscita da sandbox (per produzione)
-# Vai su AWS Console > SES > Account Dashboard > Request production access
+# 3. Out of memory
+#    → Riduci bundle size o usa custom build image
 ```
 
-#### 3. **Configura S3 Bucket per Audio Files**
+#### 4. **Custom Domain** (Optional)
 
-**Nota**: Il bucket è hardcoded come `speech-to-text-audio-960902921831-dev` nel template.yaml. 
+**Aggiungi Dominio Custom**:
+```
+Amplify Console → Domain management → Add domain
 
-**Opzione 1**: Usa bucket esistente (se già presente)
+1. Domain: mayaanalytics.com
+2. Amplify crea automaticamente certificato SSL (ACM)
+3. Aggiungi record DNS:
+   
+   Type: CNAME
+   Name: www
+   Value: main.d1234abcdefg.amplifyapp.com
+   
+   Type: ANAME/ALIAS (if supported by DNS)
+   Name: @
+   Value: main.d1234abcdefg.amplifyapp.com
 
-**Opzione 2**: Crea nuovo bucket e aggiorna template.yaml
-
-```bash
-# Crea bucket
-aws s3 mb s3://speech-to-text-audio-{AccountId}-{Environment} \
-  --region eu-central-1 \
-  --profile nome-profilo
-
-# Abilita crittografia
-aws s3api put-bucket-encryption \
-  --bucket speech-to-text-audio-{AccountId}-{Environment} \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "AES256"
-      }
-    }]
-  }' \
-  --profile nome-profilo
-
-# Configura CORS
-aws s3api put-bucket-cors \
-  --bucket speech-to-text-audio-{AccountId}-{Environment} \
-  --cors-configuration file://cors-config.json \
-  --profile nome-profilo
-
-# cors-config.json
-{
-  "CORSRules": [{
-    "AllowedOrigins": ["*"],
-    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3600
-  }]
-}
-
-# Configura Lifecycle (auto-delete dopo 30 giorni)
-aws s3api put-bucket-lifecycle-configuration \
-  --bucket speech-to-text-audio-{AccountId}-{Environment} \
-  --lifecycle-configuration file://lifecycle-config.json \
-  --profile nome-profilo
-
-# lifecycle-config.json
-{
-  "Rules": [{
-    "Id": "DeleteAfter30Days",
-    "Status": "Enabled",
-    "ExpirationInDays": 30
-  }]
-}
+4. Verifica DNS propagation (può richiedere 24-48h)
+5. Certificato SSL automaticamente provisionato
 ```
 
-**Aggiorna template.yaml** con il nome del bucket effettivo:
+**Redirect www → root**:
+```
+Amplify Console → Rewrites and redirects
+
+Source: https://www.mayaanalytics.com
+Target: https://mayaanalytics.com
+Type: 301 - Permanent Redirect
+```
+
+### CI/CD Automatico
+
+**Amplify CI/CD**:
 ```yaml
-# Cerca e sostituisci tutte le occorrenze di:
-speech-to-text-audio-960902921831-dev
-# Con:
-speech-to-text-audio-{AccountId}-{Environment}
+# amplify.yml (già configurato)
+version: 1
+applications:
+  - appRoot: Deploy/frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci  # Installa dipendenze
+        build:
+          commands:
+            - npm run build  # Build Next.js
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
 ```
 
-#### 4. **Abilita Bedrock Model Access (Claude)**
-
-```bash
-# Vai su AWS Console > Bedrock > Model access
-# Richiedi accesso a "Claude 3.5 Sonnet"
-# Region: eu-central-1
-
-# Verifica accesso via CLI
-aws bedrock list-foundation-models \
-  --region eu-central-1 \
-  --profile nome-profilo \
-  --query 'modelSummaries[?contains(modelId, `anthropic.claude-3-5-sonnet`)]'
+**Workflow**:
+```
+1. Developer fa git push su branch main
+2. Amplify rileva commit (webhook GitHub)
+3. Trigger build automatico:
+   - Clona repository
+   - Installa dependencies (npm ci)
+   - Build app (npm run build)
+   - Deploy su CloudFront
+   - Invalidate cache CDN
+4. App aggiornata (downtime zero!)
+5. Notifica Slack/Email (opzionale)
 ```
 
-#### 5. **Configura S3 Event Notification**
+**Branch Deployments**:
+```
+# Deploy branch develop separato
+main → https://main.d1234abcdefg.amplifyapp.com (production)
+develop → https://develop.d1234abcdefg.amplifyapp.com (staging)
+feature/x → https://feature-x.d1234abcdefg.amplifyapp.com (preview)
 
-```bash
-# Abilita notifica S3 → Lambda per ProcessAudioFunction
-aws s3api put-bucket-notification-configuration \
-  --bucket speech-to-text-audio-{AccountId}-{Environment} \
-  --notification-configuration file://s3-notification.json \
-  --profile nome-profilo
-
-# s3-notification.json
-{
-  "LambdaFunctionConfigurations": [{
-    "Id": "ProcessAudioOnUpload",
-    "LambdaFunctionArn": "arn:aws:lambda:eu-central-1:{AccountId}:function:speech-to-text-multitenant-ProcessAudio-dev",
-    "Events": ["s3:ObjectCreated:*"],
-    "Filter": {
-      "Key": {
-        "FilterRules": [{
-          "Name": "suffix",
-          "Value": ".wav"
-        }]
-      }
-    }
-  }]
-}
-
-# Aggiungi permesso Lambda per S3
-aws lambda add-permission \
-  --function-name speech-to-text-multitenant-ProcessAudio-dev \
-  --statement-id s3-invoke-permission \
-  --action lambda:InvokeFunction \
-  --principal s3.amazonaws.com \
-  --source-arn arn:aws:s3:::speech-to-text-audio-{AccountId}-{Environment} \
-  --profile nome-profilo
+# Configure in Amplify Console:
+# General → Branch → Add branch
 ```
 
-**Nota**: Questo step potrebbe essere necessario solo se il bucket non è gestito da SAM/CloudFormation.
+### Monitoring & Troubleshooting
 
-#### 6. **Test End-to-End**
+#### 1. **CloudWatch Dashboards**
 
+**Crea Dashboard Custom**:
 ```bash
-# 1. Login frontend con superadmin
-# 2. Crea un tenant di test
-# 3. Crea una licenza per il tenant
-# 4. Upload file audio di test su S3
+# Via AWS Console:
+CloudWatch → Dashboards → Create dashboard → "maya-analytics-prod"
 
-aws s3 cp test_audio.wav s3://speech-to-text-audio-{AccountId}-{Environment}/test_audio.wav \
-  --profile nome-profilo
-
-# 5. Monitora CloudWatch Logs per ProcessAudioFunction
-aws logs tail /aws/lambda/speech-to-text-multitenant-ProcessAudio-dev \
-  --follow \
-  --profile nome-profilo
-
-# 6. Verifica record creato in DynamoDB
-aws dynamodb scan \
-  --table-name speech-to-text-records-dev \
-  --limit 1 \
-  --profile nome-profilo
-
-# 7. Controlla email inviata
-# 8. Verifica PDF generato in S3
+# Aggiungi widgets:
+# 1. Lambda Invocations (all 3 functions)
+# 2. Lambda Errors
+# 3. Lambda Duration
+# 4. API Gateway 4XX/5XX errors
+# 5. API Gateway Latency
+# 6. DynamoDB Read/Write Capacity
+# 7. Cognito Sign In Successes/Failures
 ```
 
-### Troubleshooting Deploy
+#### 2. **CloudWatch Alarms**
 
-#### Problema: "Template format error"
+**Alarms Critici**:
 ```bash
-# Valida template
-sam validate --profile nome-profilo
-
-# Controlla sintassi YAML
-yamllint template.yaml
-```
-
-#### Problema: "Insufficient permissions"
-```bash
-# Verifica permessi IAM dell'utente/role
-aws iam get-user --profile nome-profilo
-aws iam list-attached-user-policies --user-name {UserName} --profile nome-profilo
-
-# Permessi richiesti: CloudFormation, Lambda, IAM, S3, DynamoDB, API Gateway, Cognito
-```
-
-#### Problema: "Lambda in VPC has no internet access"
-```bash
-# Se EnableVpc=true, verifica NAT Gateway
-aws ec2 describe-nat-gateways \
-  --filter "Name=vpc-id,Values={VpcId}" \
-  --profile nome-profilo
-
-# Verifica route tables
-aws ec2 describe-route-tables \
-  --filter "Name=vpc-id,Values={VpcId}" \
-  --profile nome-profilo
-```
-
-#### Problema: "Transcribe job fails"
-```bash
-# Controlla permessi Lambda su Transcribe
-aws iam get-policy-version \
-  --policy-arn {ProcessAudioFunctionRoleArn} \
-  --version-id v1 \
-  --profile nome-profilo
-
-# Verifica quota Transcribe
-aws service-quotas get-service-quota \
-  --service-code transcribe \
-  --quota-code L-1234ABCD \
-  --region eu-central-1 \
-  --profile nome-profilo
-```
-
-#### Problema: "Email not sent"
-```bash
-# Verifica identità SES
-aws ses get-identity-verification-attributes \
-  --identities noreply@yourdomain.com \
-  --region eu-central-1 \
-  --profile nome-profilo
-
-# Controlla se ancora in sandbox
-aws sesv2 get-account \
-  --region eu-central-1 \
-  --profile nome-profilo \
-  --query 'ProductionAccessEnabled'
-
-# Se false, solo email verificate ricevono notifiche (sandbox mode)
-```
-
-#### Problema: "Frontend 401 Unauthorized"
-```bash
-# Verifica configurazione Cognito in amplify.js
-# Controlla token JWT nel browser DevTools > Application > Local Storage
-
-# Testa API manualmente
-TOKEN=$(aws cognito-idp admin-initiate-auth \
-  --user-pool-id eu-central-1_XXXXXXXXX \
-  --client-id xxxxxxxxxxxxxxxxxx \
-  --auth-flow ADMIN_NO_SRP_AUTH \
-  --auth-parameters USERNAME=test@example.com,PASSWORD=Password123! \
-  --profile nome-profilo \
-  --query 'AuthenticationResult.IdToken' \
-  --output text)
-
-curl -H "Authorization: Bearer $TOKEN" \
-  https://xxx.execute-api.eu-central-1.amazonaws.com/dev/api/statistics
-```
-
-### Rollback e Cleanup
-
-#### Rollback Deploy
-```bash
-# CloudFormation rollback automatico in caso di errore
-# Per rollback manuale a versione precedente:
-aws cloudformation update-stack \
-  --stack-name speech-to-text-multitenant \
-  --use-previous-template \
-  --profile nome-profilo
-```
-
-#### Eliminazione Stack Completa
-```bash
-# ⚠️ ATTENZIONE: Elimina TUTTI i dati!
-
-# Svuota bucket S3 prima (se non ha retention policy)
-aws s3 rm s3://speech-to-text-audio-{AccountId}-{Environment}/ --recursive --profile nome-profilo
-
-# Elimina stack CloudFormation
-aws cloudformation delete-stack \
-  --stack-name speech-to-text-multitenant \
-  --profile nome-profilo
-
-# Monitora eliminazione
-aws cloudformation wait stack-delete-complete \
-  --stack-name speech-to-text-multitenant \
-  --profile nome-profilo
-
-# Elimina Amplify app (se usato)
-aws amplify delete-app --app-id {AppId} --profile nome-profilo
-```
-
----
-
-## 📝 Licenze e Funzionalità
-
-### Tipi di Licenza
-
-| Licenza | Descrizione | Funzionalità Abilitate |
-|---------|-------------|------------------------|
-| **BASE** | Trascrizione base | ✅ Trascrizione audio<br>✅ Speaker labels<br>✅ Email notifica |
-| **R** | Riassunti | ✅ BASE +<br>✅ Riassunto AI (Claude) |
-| **S** | Sentiment | ✅ BASE +<br>✅ Analisi sentiment (Comprehend) |
-| **R+S** | Completa | ✅ Tutte le funzionalità |
-
-### Gestione Licenze
-
-#### Creazione Automatica
-Quando un nuovo `clientId` carica un file audio, il sistema:
-1. Verifica se esiste licenza in `LicenseTable`
-2. Se non esiste, crea automaticamente licenza `R+S` (completa)
-3. Crea utente Cognito automaticamente con password temporanea `Password.1234!`
-4. L'utente deve cambiare password al primo login
-
-#### Upgrade/Downgrade
-Solo **superadmin** può modificare tipo licenza:
-- Dashboard → Gestione Licenze → Seleziona cliente → Modifica tipo
-
-#### Disattivazione
-Impostare `isActive: false` su licenza:
-- Blocca nuove elaborazioni
-- Non elimina dati esistenti
-
----
-
-## 📊 Monitoraggio e Manutenzione
-
-### CloudWatch Logs
-
-```bash
-# Tail logs in tempo reale
-aws logs tail /aws/lambda/{FunctionName} --follow --profile nome-profilo
-
-# Query logs (Insights)
-aws logs start-query \
-  --log-group-name /aws/lambda/speech-to-text-multitenant-ProcessAudio-dev \
-  --start-time $(date -u -d '1 hour ago' +%s) \
-  --end-time $(date -u +%s) \
-  --query-string 'fields @timestamp, @message | filter @message like /ERROR/' \
-  --profile nome-profilo
-```
-
-### Metriche CloudWatch
-
-**Lambda Metrics**:
-- `Invocations`: Numero di invocazioni
-- `Errors`: Errori non gestiti
-- `Duration`: Tempo di esecuzione
-- `Throttles`: Richieste throttled
-
-**API Gateway Metrics**:
-- `Count`: Numero richieste
-- `4XXError`: Errori client
-- `5XXError`: Errori server
-- `Latency`: Latenza
-
-**DynamoDB Metrics**:
-- `ConsumedReadCapacityUnits`: RCU consumate
-- `ConsumedWriteCapacityUnits`: WCU consumate
-- `SystemErrors`: Errori di sistema
-
-### Allarmi CloudWatch (Consigliati)
-
-```bash
-# Esempio: Allarme su errori Lambda
+# 1. Lambda Errors > 5 in 5 minutes
 aws cloudwatch put-metric-alarm \
-  --alarm-name "STT-ProcessAudio-Errors" \
-  --alarm-description "Allarme se ProcessAudio ha > 5 errori in 5 minuti" \
-  --metric-name Errors \
-  --namespace AWS/Lambda \
-  --statistic Sum \
-  --period 300 \
-  --threshold 5 \
-  --comparison-operator GreaterThanThreshold \
-  --dimensions Name=FunctionName,Value=speech-to-text-multitenant-ProcessAudio-dev \
-  --evaluation-periods 1 \
-  --alarm-actions arn:aws:sns:eu-central-1:{AccountId}:alert-topic \
-  --profile nome-profilo
+    --alarm-name maya-lambda-errors-high \
+    --alarm-description "Lambda errors above threshold" \
+    --metric-name Errors \
+    --namespace AWS/Lambda \
+    --statistic Sum \
+    --period 300 \
+    --threshold 5 \
+    --comparison-operator GreaterThanThreshold \
+    --evaluation-periods 1 \
+    --alarm-actions arn:aws:sns:eu-central-1:ACCOUNT_ID:alerts
+
+# 2. API Gateway 5XX > 10 in 5 minutes
+aws cloudwatch put-metric-alarm \
+    --alarm-name maya-api-5xx-high \
+    --metric-name 5XXError \
+    --namespace AWS/ApiGateway \
+    --statistic Sum \
+    --period 300 \
+    --threshold 10 \
+    --comparison-operator GreaterThanThreshold \
+    --evaluation-periods 1
+
+# 3. Report Generator Duration > 280s (timeout 301s)
+aws cloudwatch put-metric-alarm \
+    --alarm-name maya-report-generator-timeout-risk \
+    --metric-name Duration \
+    --namespace AWS/Lambda \
+    --statistic Maximum \
+    --period 300 \
+    --threshold 280000 \
+    --comparison-operator GreaterThanThreshold \
+    --evaluation-periods 1
 ```
 
-### Backup e Disaster Recovery
+#### 3. **Logs Analysis**
 
-#### DynamoDB
-- **Point-in-Time Recovery (PITR)**: Abilita per backup continui
-  ```bash
-  aws dynamodb update-continuous-backups \
-    --table-name speech-to-text-records-dev \
-    --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true \
-    --profile nome-profilo
-  ```
-- **On-Demand Backups**: Backup manuali prima di manutenzioni
-  ```bash
-  aws dynamodb create-backup \
-    --table-name speech-to-text-records-dev \
-    --backup-name "backup-$(date +%Y%m%d-%H%M%S)" \
-    --profile nome-profilo
-  ```
+**Query CloudWatch Logs Insights**:
+```sql
+-- Trova tutti gli errori ultimi 24h
+fields @timestamp, @message
+| filter @message like /ERROR|Exception/
+| sort @timestamp desc
+| limit 100
 
-#### S3
-- **Versioning**: Abilita per recovery accidentale
-  ```bash
-  aws s3api put-bucket-versioning \
-    --bucket speech-to-text-audio-{AccountId}-{Environment} \
-    --versioning-configuration Status=Enabled \
-    --profile nome-profilo
-  ```
-- **Cross-Region Replication**: Per DR geografico
-- **S3 Lifecycle**: Transition a Glacier dopo 30 giorni per archivio economico
+-- Lambda duration statistics
+fields @duration
+| stats avg(@duration), max(@duration), min(@duration)
+| filter @type = "REPORT"
 
-### Manutenzione Programmata
+-- Report generation successes
+fields @timestamp, user_id, report_type
+| filter @message like /Report sent successfully/
+| count(*) by bin(5m)
 
-#### Pulizia Manuale Dati Scaduti
+-- Failed report generations
+fields @timestamp, user_id, error
+| filter @message like /Error generating report/
+| sort @timestamp desc
+```
+
+#### 4. **X-Ray Tracing** (Optional)
+
+**Abilita X-Ray**:
+```yaml
+# template.yaml
+Globals:
+  Function:
+    Tracing: Active
+
+# Rideploy
+sam deploy
+```
+
+**Visualizza Traces**:
+```
+AWS X-Ray Console → Traces
+
+Esempio trace:
+┌─────────────────────────────────────────┐
+│  API Gateway (15ms)                     │
+│    └─ ApiFunction (120ms)               │
+│       ├─ DynamoDB GetItem (5ms)         │
+│       ├─ Lambda Invoke ReportGen (2.5s) │
+│       │  ├─ HTTP Request XML (800ms)    │
+│       │  ├─ Bedrock InvokeModel (1.2s)  │
+│       │  └─ Lambda Invoke Email (300ms) │
+│       │     └─ SES SendEmail (250ms)    │
+│       └─ DynamoDB PutItem (8ms)         │
+│                                         │
+│  Total Duration: 2.65s                  │
+└─────────────────────────────────────────┘
+```
+
+### Rollback & Disaster Recovery
+
+#### 1. **Rollback CloudFormation Stack**
+
 ```bash
-# Se CleanupFunction non funziona, pulizia manuale
-aws dynamodb scan \
-  --table-name speech-to-text-records-dev \
-  --filter-expression "ttl < :now" \
-  --expression-attribute-values '{":now": {"N": "'$(date +%s)'"}}' \
-  --projection-expression recordId \
-  --profile nome-profilo \
-  | jq -r '.Items[].recordId.S' \
-  | while read recordId; do
-      aws dynamodb delete-item \
-        --table-name speech-to-text-records-dev \
-        --key "{\"recordId\": {\"S\": \"$recordId\"}}" \
-        --profile nome-profilo
-    done
+# Lista stack updates
+aws cloudformation describe-stack-events \
+    --stack-name maya-analytics-prod \
+    --region eu-central-1
+
+# Rollback a versione precedente
+aws cloudformation cancel-update-stack \
+    --stack-name maya-analytics-prod \
+    --region eu-central-1
+
+# Oppure elimina e ricrea da versione precedente
+aws cloudformation delete-stack \
+    --stack-name maya-analytics-prod
+
+# Rideploy versione precedente
+sam deploy --parameter-overrides Environment=prod
 ```
 
-#### Aggiornamento Lambda Runtime
+#### 2. **Rollback Amplify Frontend**
+
 ```bash
-# Quando Node.js 16 diventa deprecato
-# 1. Testa localmente con nuova versione
-# 2. Aggiorna template.yaml:
-#    Runtime: nodejs18.x (o nodejs20.x)
-# 3. sam build && sam deploy
+# Lista deployments
+aws amplify list-jobs \
+    --app-id YOUR_APP_ID \
+    --branch-name main \
+    --region eu-central-1
+
+# Rollback a job precedente
+aws amplify start-job \
+    --app-id YOUR_APP_ID \
+    --branch-name main \
+    --job-type RELEASE \
+    --commit-id PREVIOUS_COMMIT_SHA \
+    --region eu-central-1
 ```
 
-#### Rotazione Secret/API Keys
+#### 3. **Backup DynamoDB**
+
+**On-Demand Backup**:
 ```bash
-# Genera nuova API key per partner
-NEW_API_KEY=$(openssl rand -hex 32)
+# Backup manuale
+aws dynamodb create-backup \
+    --table-name maya-users-prod \
+    --backup-name maya-users-backup-$(date +%Y%m%d) \
+    --region eu-central-1
 
-# Aggiorna DynamoDB
-aws dynamodb update-item \
-  --table-name speech-to-text-partners-dev \
-  --key '{"partnerId": {"S": "partner-setera"}}' \
-  --update-expression "SET apiKey = :newKey" \
-  --expression-attribute-values "{\":newKey\": {\"S\": \"$NEW_API_KEY\"}}" \
-  --profile nome-profilo
+# Lista backups
+aws dynamodb list-backups \
+    --table-name maya-users-prod
 
-echo "Nuova API Key: $NEW_API_KEY"
-# Comunica al partner per aggiornare integrazione
+# Restore da backup
+aws dynamodb restore-table-from-backup \
+    --target-table-name maya-users-prod-restored \
+    --backup-arn arn:aws:dynamodb:eu-central-1:ACCOUNT_ID:table/maya-users-prod/backup/BACKUP_ID
 ```
 
----
+**Point-in-Time Recovery (PITR)** (Recommended):
+```bash
+# Abilita PITR
+aws dynamodb update-continuous-backups \
+    --table-name maya-users-prod \
+    --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true
 
-## 💰 Costi
+# Restore a timestamp specifico
+aws dynamodb restore-table-to-point-in-time \
+    --source-table-name maya-users-prod \
+    --target-table-name maya-users-prod-restored \
+    --restore-date-time 2024-01-15T10:30:00Z
+```
 
-### Stima Mensile (Uso Moderato)
+### Costi Stimati
 
-Scenario: 500 registrazioni/mese, 3 min/registrazione, licenza R+S
+**Monthly Cost Breakdown** (Production - 100 users, 2000 reports/month):
 
-| Servizio | Utilizzo | Costo Unitario | Costo Mensile |
-|----------|----------|----------------|---------------|
-| **Lambda** | 500 invocazioni × 13 funzioni × 30s avg<br>= 195.000 request-secondi<br>Memory: 256 MB | First 1M requests free<br>$0.0000166667 per GB-second | **$5** |
-| **API Gateway** | 500 upload + 1000 admin calls<br>= 1.500 requests | First 1M requests free | **$0** (free tier) |
-| **S3** | 500 × 15 MB (audio + PDF)<br>= 7.5 GB storage<br>1500 GET/PUT requests | $0.023/GB/month<br>$0.005/1000 PUT<br>$0.0004/1000 GET | **$0.17** |
-| **DynamoDB** | PAY_PER_REQUEST<br>500 writes + 1500 reads/month | $1.25/million writes<br>$0.25/million reads | **$0.001** |
-| **Transcribe** | 500 × 3 min = 1.500 minuti | $0.024/min (first 250.000 min) | **$36** |
-| **Bedrock (Claude)** | 500 riassunti<br>Avg 1000 input tokens + 300 output | $3/M input tokens<br>$15/M output tokens | **$3.75** |
-| **Comprehend** | 500 sentiment analysis<br>Avg 500 chars | $0.0001/100 chars | **$0.25** |
-| **SES** | 500 email con PDF allegato | $0.10/1000 email | **$0.05** |
-| **Cognito** | 100 utenti attivi | First 50.000 MAU free | **$0** (free tier) |
-| **CloudWatch** | 5 GB logs/month | $0.50/GB | **$2.50** |
-| **NAT Gateway** (se VPC abilitato) | 744 ore × 1 GB data/ora | $0.045/hour + $0.045/GB | **❌ $67** (disabilitato di default) |
-| **VPC Endpoints** | S3 + DynamoDB Gateway | Gateway endpoints free | **$0** |
+| Servizio | Utilizzo | Costo Mensile |
+|----------|----------|--------------|
+| **Lambda** | ~50,000 invocations, 1GB-s | ~$5 |
+| **API Gateway** | 50,000 requests | ~$0.05 |
+| **DynamoDB** | Pay-per-request, ~100k ops | ~$1.25 |
+| **Cognito** | 100 MAU (Monthly Active Users) | Free (< 50k) |
+| **Bedrock (Claude)** | 2000 invocations × 2k tokens | ~$60 |
+| **SES** | 2000 emails | ~$0.20 |
+| **CloudWatch** | Logs 5GB, Metrics standard | ~$2 |
+| **Amplify Hosting** | 100GB bandwidth, build minutes | ~$5 |
+| **Total** | | **~$73/month** |
 
-### **Totale Mensile Stimato**: 
-- **Senza VPC**: ~**$47.73/mese**
-- **Con VPC**: ~**$114.73/mese**
+**Scaling Costs**:
+- 1,000 users, 20k reports/month: ~$600/month (mostly Bedrock)
+- 10,000 users, 200k reports/month: ~$6,000/month
 
-### Ottimizzazioni Costi
-
-#### 1. **Ridurre Costi Transcribe** (maggior voce di costo)
-- Campionare solo un subset di chiamate (es. 10%)
-- Ridurre qualità audio (16 kHz invece di 44.1 kHz)
-- Usare licenza BASE per clienti che non necessitano riassunti/sentiment
-
-#### 2. **Ridurre Costi Lambda**
-- Memory sizing ottimale (256 MB spesso sufficiente)
-- Ridurre timeout dove possibile
-- Usare Lambda Provisioned Concurrency solo se necessario (per produzione ad alto traffico)
-
-#### 3. **Ridurre Costi S3**
-- Lifecycle policy aggressiva (es. 7 giorni invece di 30)
-- Transition a S3 Glacier dopo retention period
-- Compressione audio (FLAC o Opus invece di WAV)
-
-#### 4. **Ridurre Costi Bedrock**
-- Riassunti più brevi (100 parole invece di 200)
-- Cache riassunti per conversazioni simili
-- Modello più economico (Claude Haiku invece di Sonnet)
-
-#### 5. **Evitare VPC**
-- NAT Gateway costa ~$32.40/month per availability zone
-- Usare VPC solo per compliance strict o integrazione on-premise
-- Default: `EnableVpc=false`
-
-### Free Tier (Primo Anno AWS)
-
-Se account AWS < 12 mesi:
-- Lambda: 1M requests + 400.000 GB-seconds free/month
-- API Gateway: 1M requests free/month
-- S3: 5 GB storage + 20.000 GET + 2.000 PUT free/month
-- DynamoDB: 25 GB storage + 25 RCU + 25 WCU free/month
-- **Stima First Year**: ~**$40-45/mese** invece di $47.73
-
-### Costi di Produzione (Scala)
-
-Per **10.000 registrazioni/mese**:
-- Transcribe: **$720** (costo predominante)
-- Bedrock: **$75**
-- Lambda: **$15**
-- S3: **$3.50**
-- Altri: **$10**
-- **Totale**: ~**$823.50/mese**
-
-**Raccomandazione**: Per scale superiori, considerare:
-- Reserved Capacity per Transcribe (sconto 30%)
-- Spot Lambda (non disponibile nativamente, usare alternative)
-- CDN CloudFront per distribuzione PDF
+**Cost Optimization**:
+- ✅ DynamoDB on-demand (no provisioned capacity waste)
+- ✅ Lambda timeout ottimizzati
+- ✅ S3 lifecycle policies (not used yet)
+- ✅ CloudWatch Logs retention 30 giorni (riduci se serve)
+- ⚠️ Bedrock è il costo principale (considera caching insights simili)
 
 ---
 
-## 📄 Licenza
+## 📞 Support
 
-MIT License - Vedi [LICENSE](LICENSE) per dettagli completi.
-
----
-
-## 🤝 Supporto
-
-Per supporto tecnico o domande:
-- **Email**: belal.darwish@neuralect.it
-- **Documentazione AWS**: 
-  - [AWS SAM](https://docs.aws.amazon.com/serverless-application-model/)
-  - [Amazon Transcribe](https://docs.aws.amazon.com/transcribe/)
-  - [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/)
+**Developed by**: Neuralect  
+**Contact**: info@neuralect.it  
+**Website**: https://neuralect.it
 
 ---
 
-## 📚 Risorse Aggiuntive
+## 📝 License
 
-### Documentazione Tecnica
-- [AWS Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
-- [DynamoDB Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
-- [Amazon Cognito Security](https://docs.aws.amazon.com/cognito/latest/developerguide/security.html)
-
-### Tutorial e Guide
-- [Multitenancy in Serverless Architectures](https://aws.amazon.com/blogs/compute/multi-tenant-architectures-on-aws/)
-- [GDPR Compliance on AWS](https://aws.amazon.com/compliance/gdpr-center/)
-- [Speech-to-Text with Amazon Transcribe](https://aws.amazon.com/transcribe/getting-started/)
-
----
-
-**Versione README**: 1.0.0  
-**Ultimo Aggiornamento**: Gennaio 2025  
-**Autore**: Neuralect Team
+Proprietary - © 2024 Neuralect. All rights reserved.
 
