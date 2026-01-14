@@ -41,11 +41,15 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="card w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eeeeee]">
+      <div className="w-full max-w-md bg-[#286291] rounded-lg shadow-xl p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-light text-gray-800 mb-2">🤖 Maya</h1>
-          <p className="text-gray-600">Analytics Assistant per Setera Centralino</p>
+          <h1 className="text-4xl font-light text-white mb-2">Maya</h1>
+          <p className="text-white/90 text-sm leading-relaxed">
+            Analytics<br />
+            Assistant per<br />
+            Selera Centralino
+          </p>
         </div>
 
         {error && (
@@ -56,25 +60,25 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Email</label>
+            <label className="block text-white font-medium mb-2">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="input"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#113357] transition-colors bg-white text-gray-800"
               disabled={loading}
             />
           </div>
 
           <div className="mb-5">
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-gray-700 font-medium">Password</label>
+              <label className="block text-white font-medium">Password</label>
               <button
                 type="button"
                 onClick={onForgotPassword}
                 disabled={loading}
-                className="text-sm text-[#286291] hover:text-[#113357] underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-sm text-white/80 hover:text-white underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Password dimenticata?
               </button>
@@ -84,7 +88,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="input"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#113357] transition-colors bg-white text-gray-800"
               disabled={loading}
             />
           </div>
@@ -92,7 +96,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-full"
+            className="w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>
