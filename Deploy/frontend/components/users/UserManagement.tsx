@@ -58,81 +58,83 @@ export default function UserManagement({ users, tenantId, onRefresh }: Props) {
   return (
     <>
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-semibold text-gray-800">Gestione Utenti</h3>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary"
-          >
-            + Crea Nuovo Utente
-          </button>
-        </div>
+        <div className="content-card">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-semibold text-gray-800">Gestione Utenti</h3>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary"
+            >
+              + Crea Nuovo Utente
+            </button>
+          </div>
 
-        <SearchAndFilter
-          searchPlaceholder="Cerca per nome o email..."
-          searchValue={searchTerm}
-          onSearchChange={setSearchTerm}
-          showFilters={false}
-          onToggleFilters={() => {}}
-          filters={[]}
-        />
+          <SearchAndFilter
+            searchPlaceholder="Cerca per nome o email..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            showFilters={false}
+            onToggleFilters={() => {}}
+            filters={[]}
+          />
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Connettori</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                    {users.length === 0
-                      ? 'Nessun utente trovato'
-                      : 'Nessun utente corrisponde ai filtri selezionati'}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Nome</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Connettori</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Azioni</th>
                 </tr>
-              ) : (
-                filteredUsers.map((user) => {
-                  const connectors = (user as any).connectors || [];
-                  const enabledConnectors = connectors.filter((c: any) => c.report_enabled !== false).length;
-                  
-                  return (
-                    <tr key={user.user_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 border-b">{user.name || 'N/A'}</td>
-                      <td className="px-4 py-3 border-b">{user.report_email || user.email}</td>
-                      <td className="px-4 py-3 border-b">
-                        <span className="badge bg-blue-100 text-blue-800">
-                          {connectors.length} connettore{connectors.length !== 1 ? 'i' : ''}
-                          {enabledConnectors > 0 && ` (${enabledConnectors} attivo${enabledConnectors !== 1 ? 'i' : ''})`}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border-b">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
-                          >
-                            Modifica
-                          </button>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      {users.length === 0
+                        ? 'Nessun utente trovato'
+                        : 'Nessun utente corrisponde ai filtri selezionati'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => {
+                    const connectors = (user as any).connectors || [];
+                    const enabledConnectors = connectors.filter((c: any) => c.report_enabled !== false).length;
+                    
+                    return (
+                      <tr key={user.user_id}>
+                        <td className="px-4 py-3 text-gray-800">{user.name || 'N/A'}</td>
+                        <td className="px-4 py-3 text-gray-800">{user.report_email || user.email}</td>
+                        <td className="px-4 py-3">
+                          <span className="badge bg-[#eeeeee] text-[#286291]">
+                            {connectors.length} connettore{connectors.length !== 1 ? 'i' : ''}
+                            {enabledConnectors > 0 && ` (${enabledConnectors} attivo${enabledConnectors !== 1 ? 'i' : ''})`}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                            >
+                              Modifica
+                            </button>
                           <button
                             onClick={() => handleDelete(user.user_id)}
-                            className="btn btn-small btn-danger"
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
                           >
                             Elimina
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

@@ -29,7 +29,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-5">
+    <div className="dashboard-content min-h-screen p-5">
       <div className="max-w-7xl mx-auto">
         <DashboardHeader />
         

@@ -1,14 +1,89 @@
 @import "tailwindcss";
 
+/* ========================================
+   FONT SOFIA PRO - DECLARATIONS
+   ======================================== */
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProLight.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProLightIt.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProRegular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProRegularIt.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProSemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProSemiBoldIt.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Sofia Pro';
+  src: url('/fonts/SofiaProBoldIt.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
-  --gradient-start: #667eea;
-  --gradient-end: #764ba2;
+  /* NUOVA PALETTA COLORI */
+  --primary-dark: #113357;
+  --primary-medium: #286291;
+  --background-light: #eeeeee;
+  
+  /* Gradient per background e bottoni */
+  --gradient-start: #113357;
+  --gradient-end: #286291;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+  font-family: 'Sofia Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #eeeeee;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 @layer components {
@@ -17,15 +92,34 @@ body {
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white hover:shadow-lg hover:-translate-y-0.5;
+    @apply bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5;
   }
   
   .btn-secondary {
-    @apply bg-gray-500 text-white hover:bg-gray-600;
+    @apply bg-[#286291] text-white hover:bg-[#113357];
   }
   
   .btn-danger {
-    @apply bg-gradient-to-r from-[#e74c3c] to-[#c0392b] text-white hover:shadow-lg;
+    @apply bg-red-600 text-white hover:bg-red-700 hover:shadow-lg;
+  }
+
+  /* Force all buttons inside blue cards to use #286291 */
+  .card .btn-danger,
+  .card .btn[class*="bg-red"],
+  .card .btn[class*="bg-green"],
+  .card .btn[class*="bg-yellow"],
+  .card .btn[class*="bg-orange"] {
+    background-color: #286291 !important;
+    background: #286291 !important;
+  }
+
+  .card .btn-danger:hover,
+  .card .btn[class*="bg-red"]:hover,
+  .card .btn[class*="bg-green"]:hover,
+  .card .btn[class*="bg-yellow"]:hover,
+  .card .btn[class*="bg-orange"]:hover {
+    background-color: #113357 !important;
+    background: #113357 !important;
   }
   
   .btn-small {
@@ -33,14 +127,315 @@ body {
   }
   
   .card {
-    @apply bg-white rounded-2xl p-6 shadow-xl mb-6;
+    @apply bg-[#286291] rounded-none shadow-xl mb-6 text-white;
+    padding: 1.5rem;
+    padding-left: 18rem; /* 16rem sidebar + 2rem spazio */
+  }
+  
+  /* Modal cards should not have left padding */
+  div.fixed .card,
+  .fixed .card,
+  [class*="fixed"] .card {
+    padding-left: 1.5rem !important;
+  }
+  
+  /* Dashboard content wrapper with SVG background */
+  .dashboard-content {
+    position: relative;
+    min-height: 100vh;
+    background-color: #eeeeee;
+    padding-top: 9rem;
+    padding-left: 0;
+    padding-right: 1.5rem;
+    padding-bottom: 1.25rem;
+  }
+  
+  /* SVG background with transparency and smaller size */
+  .dashboard-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('/svg/background.svg');
+    background-size: 25%;
+    background-position: right 0 top;
+    background-repeat: no-repeat;
+    opacity: 0.2;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* COMPLETELY HIDE SVG BACKGROUND FROM CONTENT CARDS */
+  .content-card,
+  .content-card * {
+    background-image: none !important;
+  }
+
+  .card .content-card,
+  .card .content-card * {
+    background-image: none !important;
+  }
+  
+  /* Cards overlay the SVG background */
+  .dashboard-content .card {
+    position: relative;
+    z-index: 1;
+    background-color: #286291;
+    color: white;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  /* Text colors inside cards - make white for readability */
+  .card h1,
+  .card h2,
+  .card h3,
+  .card h4,
+  .card h5,
+  .card h6,
+  .card p,
+  .card label,
+  .card span:not(.badge):not(.input-wrapper),
+  .card div:not(.input-wrapper):not(.bg-red-50):not(.bg-green-50):not(.bg-yellow-50) {
+    @apply text-white;
+  }
+  
+  /* Keep inputs and form elements with white background and dark text */
+  .card .input,
+  .card input,
+  .card select,
+  .card textarea {
+    @apply bg-white text-gray-800;
+  }
+  
+  /* Keep error messages with their original styling */
+  .card .bg-red-50 {
+    @apply bg-red-50 text-red-700;
+  }
+  
+  /* Keep table headers and cells readable - white text on blue background */
+  .card table th,
+  .card table td {
+    @apply text-white;
+    background-color: #286291 !important;
+  }
+  
+  /* Remove hover effects on table rows inside cards - keep them blue */
+  .card table tbody tr:hover,
+  .card table thead tr:hover,
+  .card table tr:hover {
+    background-color: #286291 !important;
+  }
+  
+  /* Override any hover:bg-gray-50 inside cards - force blue background */
+  .card tr:hover,
+  .card tbody tr:hover,
+  .card thead tr:hover {
+    background-color: #286291 !important;
+  }
+  
+  /* Remove any hover effects on table headers */
+  .card table thead tr,
+  .card table thead th {
+    background-color: #286291 !important;
+  }
+  
+  .card table thead tr:hover,
+  .card table thead th:hover {
+    background-color: #286291 !important;
+  }
+  
+  /* Keep search input background white */
+  .card input[type="search"],
+  .card input[type="text"] {
+    @apply bg-white text-gray-800;
   }
   
   .input {
-    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#667eea] transition-colors;
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#286291] transition-colors;
   }
   
   .badge {
     @apply px-3 py-1 rounded-full text-xs font-semibold uppercase;
   }
+
+  /* White content cards with rounded borders inside blue cards */
+  .content-card {
+    @apply bg-white rounded-xl shadow-lg p-6 text-gray-800;
+    padding-left: 1.5rem !important; /* Override card padding */
+    padding-right: 1.5rem !important;
+    position: relative;
+    z-index: 10;
+    background-color: white !important;
+    background-image: none !important;
+    isolation: isolate;
+  }
+
+  /* Text colors inside content cards - make black for readability */
+  .content-card h1,
+  .content-card h2,
+  .content-card h3,
+  .content-card h4,
+  .content-card h5,
+  .content-card h6,
+  .content-card p,
+  .content-card label,
+  .content-card span:not(.badge):not(.input-wrapper),
+  .content-card div:not(.input-wrapper):not(.bg-red-50):not(.bg-green-50):not(.bg-yellow-50) {
+    @apply text-gray-800;
+  }
+
+  /* Table styling inside content cards - COMPLETELY REMOVE ALL PATTERNS */
+  .content-card table {
+    border-collapse: collapse;
+    border: none !important;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+  }
+
+  .content-card table::before,
+  .content-card table::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .content-card table th,
+  .content-card table td {
+    @apply text-gray-800;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+    border: none !important;
+    position: relative;
+  }
+
+  .content-card table th::before,
+  .content-card table th::after,
+  .content-card table td::before,
+  .content-card table td::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  .content-card table thead th {
+    @apply text-gray-800 font-semibold;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+    border: none !important;
+    border-bottom: 1px solid #0881aa !important;
+    position: relative;
+    z-index: 20;
+  }
+
+  .content-card table thead th::before,
+  .content-card table thead th::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* REMOVE ALL HOVER EFFECTS ON TABLE HEADERS */
+  .content-card table thead th:hover,
+  .content-card table thead tr:hover th,
+  .content-card table thead:hover th,
+  .content-card table thead th:focus,
+  .content-card table thead tr:focus th {
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+    color: #1f2937 !important;
+    cursor: default !important;
+    border-bottom: 1px solid #0881aa !important;
+  }
+
+  .content-card table tbody tr:hover {
+    background-color: #f9fafb !important;
+    background-image: none !important;
+    background: #f9fafb !important;
+  }
+
+  .content-card table tbody tr {
+    border: none !important;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+  }
+
+  .content-card table tbody tr td {
+    border: none !important;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+  }
+
+  .content-card table thead tr th {
+    border: none !important;
+    border-bottom: 1px solid #0881aa !important;
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+    position: relative;
+    z-index: 20;
+  }
+
+  .content-card table thead tr th::before,
+  .content-card table thead tr th::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* REMOVE ALL HOVER EFFECTS ON TABLE HEADERS - SPECIFIC SELECTORS */
+  .content-card table thead tr th:hover,
+  .content-card table thead tr:hover th,
+  .content-card table thead:hover th,
+  .content-card table thead tr th:hover,
+  .content-card table thead tr th:focus,
+  .content-card table thead tr:focus th {
+    background-color: white !important;
+    background-image: none !important;
+    background: white !important;
+    color: #1f2937 !important;
+    cursor: default !important;
+    border-bottom: 1px solid #0881aa !important;
+  }
+
+  /* OVERRIDE ANY GLOBAL TABLE HOVER RULES */
+  .content-card table:hover thead th,
+  .content-card table:hover thead tr th {
+    background-color: white !important;
+    background: white !important;
+    color: #1f2937 !important;
+    border-bottom: 1px solid #0881aa !important;
+  }
+
+  /* Filter panel inside content cards */
+  .content-card .card {
+    background-color: #f9fafb !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .content-card .card label {
+    @apply text-gray-700;
+  }
+}
+
+/* Sidebar Styles */
+.sidebar-content {
+  margin-left: 0;
+  transition: margin-left 0.3s ease;
+}
+
+/* When sidebar is visible, add margin to content */
+body:has([data-sidebar-visible="true"]) .sidebar-content {
+  margin-left: 16rem;
+}
+
+/* Dashboard content attached to sidebar */
+body:has([data-sidebar-visible="true"]) .dashboard-content {
+  margin-left: 0;
+  padding-left: 0;
 }

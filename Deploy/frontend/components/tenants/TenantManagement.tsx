@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Tenant } from '@/types';
 import { tenantsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import CreateTenantModal from './CreateTenantModal';
 import CreateTenantAdminModal from './CreateTenantAdminModal';
 import SearchAndFilter from '../common/SearchAndFilter';
@@ -19,6 +20,7 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [selectedTenantForAdmin, setSelectedTenantForAdmin] = useState<Tenant | null>(null);
   const { setSelectedTenantId } = useAuth();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -26,6 +28,7 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
 
   const handleEnterTenant = (tenantId: string) => {
     setSelectedTenantId(tenantId);
+    router.push('/dashboard');
   };
 
   const handleDelete = async (tenantId: string) => {
@@ -112,96 +115,97 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
   return (
     <>
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-semibold text-gray-800">Gestione Tenant</h3>
-          {canCreate && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
-              + Crea Nuovo Tenant
-            </button>
-          )}
-        </div>
+        <div className="content-card">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-semibold text-gray-800">Gestione Tenant</h3>
+            {canCreate && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="btn btn-primary"
+              >
+                + Crea Nuovo Tenant
+              </button>
+            )}
+          </div>
 
-        <SearchAndFilter
-          searchPlaceholder="Cerca per nome tenant, admin email o nome admin..."
-          searchValue={searchTerm}
-          onSearchChange={setSearchTerm}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          filters={[
-            {
-              label: 'Stato',
-              key: 'status',
-              value: filterStatus,
-              onChange: setFilterStatus,
-              options: [
-                { label: 'Tutti', value: 'all' },
-                { label: 'Attivo', value: 'active' },
-                { label: 'Inattivo', value: 'inactive' },
-              ],
-            },
-            {
-              label: 'Data Creazione',
-              key: 'dateRange',
-              value: filterDateRange,
-              onChange: setFilterDateRange,
-              options: [
-                { label: 'Tutti', value: 'all' },
-                { label: 'Ultimi 7 giorni', value: 'last7days' },
-                { label: 'Ultimi 30 giorni', value: 'last30days' },
-                { label: 'Ultimi 90 giorni', value: 'last90days' },
-                { label: 'Ultimi 6 mesi', value: 'last6months' },
-                { label: 'Ultimo anno', value: 'lastyear' },
-                { label: 'Più vecchi di 1 anno', value: 'older' },
-                { label: 'Senza data', value: 'none' },
-              ],
-            },
-          ]}
-        />
+          <SearchAndFilter
+            searchPlaceholder="Cerca per nome tenant, admin email o nome admin..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            filters={[
+              {
+                label: 'Stato',
+                key: 'status',
+                value: filterStatus,
+                onChange: setFilterStatus,
+                options: [
+                  { label: 'Tutti', value: 'all' },
+                  { label: 'Attivo', value: 'active' },
+                  { label: 'Inattivo', value: 'inactive' },
+                ],
+              },
+              {
+                label: 'Data Creazione',
+                key: 'dateRange',
+                value: filterDateRange,
+                onChange: setFilterDateRange,
+                options: [
+                  { label: 'Tutti', value: 'all' },
+                  { label: 'Ultimi 7 giorni', value: 'last7days' },
+                  { label: 'Ultimi 30 giorni', value: 'last30days' },
+                  { label: 'Ultimi 90 giorni', value: 'last90days' },
+                  { label: 'Ultimi 6 mesi', value: 'last6months' },
+                  { label: 'Ultimo anno', value: 'lastyear' },
+                  { label: 'Più vecchi di 1 anno', value: 'older' },
+                  { label: 'Senza data', value: 'none' },
+                ],
+              },
+            ]}
+          />
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome Tenant</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Admin Email</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Stato</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTenants.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                    {tenants.length === 0
-                      ? 'Nessun tenant trovato'
-                      : 'Nessun tenant corrisponde ai filtri selezionati'}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Nome Tenant</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Admin Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Stato</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Azioni</th>
                 </tr>
-              ) : (
-                filteredTenants.map((tenant) => (
-                  <tr key={tenant.tenant_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 border-b">{tenant.name}</td>
-                    <td className="px-4 py-3 border-b">{tenant.admin_email || 'N/A'}</td>
-                    <td className="px-4 py-3 border-b">
-                      <span className="badge bg-green-100 text-green-800">
-                        {tenant.status || 'ATTIVO'}
-                      </span>
+              </thead>
+              <tbody>
+                {filteredTenants.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      {tenants.length === 0
+                        ? 'Nessun tenant trovato'
+                        : 'Nessun tenant corrisponde ai filtri selezionati'}
                     </td>
-                    <td className="px-4 py-3 border-b">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEnterTenant(tenant.tenant_id)}
-                          className="btn btn-small btn-primary"
-                        >
-                          Entra
-                        </button>
+                  </tr>
+                ) : (
+                  filteredTenants.map((tenant) => (
+                    <tr key={tenant.tenant_id}>
+                      <td className="px-4 py-3 text-gray-800">{tenant.name}</td>
+                      <td className="px-4 py-3 text-gray-800">{tenant.admin_email || 'N/A'}</td>
+                      <td className="px-4 py-3">
+                        <span className="badge bg-green-100 text-green-800">
+                          {tenant.status || 'ATTIVO'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEnterTenant(tenant.tenant_id)}
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                          >
+                            Entra
+                          </button>
                         {canCreate && !tenant.admin_email && (
                           <button
                             onClick={() => handleCreateAdmin(tenant)}
-                            className="btn btn-small bg-yellow-500 hover:bg-yellow-600 text-white"
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
                             title="Crea Admin per questo tenant"
                           >
                             Crea Admin
@@ -210,18 +214,19 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
                         {canCreate && (
                           <button
                             onClick={() => handleDelete(tenant.tenant_id)}
-                            className="btn btn-small btn-danger"
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
                           >
                             Elimina
                           </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

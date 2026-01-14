@@ -61,17 +61,17 @@ export default function ViewResellerTenantsModal({ reseller, onClose, onRefresh 
 
         {loading ? (
           <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mb-2"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#286291] mb-2"></div>
             <p className="text-gray-600">Caricamento tenant...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome Tenant</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Admin Email</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Nome Tenant</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Admin Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Azioni</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,7 +83,7 @@ export default function ViewResellerTenantsModal({ reseller, onClose, onRefresh 
                   </tr>
                 ) : (
                   tenants.map((tenant) => (
-                    <tr key={tenant.tenant_id} className="hover:bg-gray-50">
+                    <tr key={tenant.tenant_id}>
                       <td className="px-4 py-3 border-b">{tenant.name}</td>
                       <td className="px-4 py-3 border-b">{tenant.admin_email || 'N/A'}</td>
                       <td className="px-4 py-3 border-b">

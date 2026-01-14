@@ -228,7 +228,7 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#286291] mb-4"></div>
           <p className="text-gray-600">Caricamento...</p>
         </div>
       </div>
@@ -238,227 +238,228 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
   return (
     <>
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-semibold text-gray-800">Ruolo Reseller</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowCreateOrgModal(true)}
-              className="btn btn-primary"
-            >
-              + Crea Ruolo Reseller
-            </button>
-            <button
-              onClick={() => setShowCreateUserModal(true)}
-              className="btn btn-secondary"
-            >
-              + Crea Utente Reseller
-            </button>
+        <div className="content-card">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-semibold text-gray-800">Ruolo Reseller</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCreateOrgModal(true)}
+                className="btn btn-primary"
+              >
+                + Crea Ruolo Reseller
+              </button>
+              <button
+                onClick={() => setShowCreateUserModal(true)}
+                className="btn btn-secondary"
+              >
+                + Crea Utente Reseller
+              </button>
+            </div>
           </div>
-        </div>
 
-        <SearchAndFilter
-          searchPlaceholder="Cerca per nome o descrizione..."
-          searchValue={searchTerm}
-          onSearchChange={setSearchTerm}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-          filters={[
-            {
-              label: 'Utenti Reseller',
-              key: 'usersCount',
-              value: filterUsersCount,
-              onChange: setFilterUsersCount,
-              options: [
-                { label: 'Tutti', value: 'all' },
-                { label: 'Nessuno (0)', value: '0' },
-                { label: '1-5 utenti', value: '1-5' },
-                { label: '6-10 utenti', value: '6-10' },
-                { label: 'Più di 10 utenti', value: '10+' },
-              ],
-            },
-            {
-              label: 'Tenant Assegnati',
-              key: 'tenantsCount',
-              value: filterTenantsCount,
-              onChange: setFilterTenantsCount,
-              options: [
-                { label: 'Tutti', value: 'all' },
-                { label: 'Nessuno (0)', value: '0' },
-                { label: '1-5 tenant', value: '1-5' },
-                { label: '6-10 tenant', value: '6-10' },
-                { label: 'Più di 10 tenant', value: '10+' },
-              ],
-            },
-          ]}
-        />
+          <SearchAndFilter
+            searchPlaceholder="Cerca per nome o descrizione..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            filters={[
+              {
+                label: 'Utenti Reseller',
+                key: 'usersCount',
+                value: filterUsersCount,
+                onChange: setFilterUsersCount,
+                options: [
+                  { label: 'Tutti', value: 'all' },
+                  { label: 'Nessuno (0)', value: '0' },
+                  { label: '1-5 utenti', value: '1-5' },
+                  { label: '6-10 utenti', value: '6-10' },
+                  { label: 'Più di 10 utenti', value: '10+' },
+                ],
+              },
+              {
+                label: 'Tenant Assegnati',
+                key: 'tenantsCount',
+                value: filterTenantsCount,
+                onChange: setFilterTenantsCount,
+                options: [
+                  { label: 'Tutti', value: 'all' },
+                  { label: 'Nessuno (0)', value: '0' },
+                  { label: '1-5 tenant', value: '1-5' },
+                  { label: '6-10 tenant', value: '6-10' },
+                  { label: 'Più di 10 tenant', value: '10+' },
+                ],
+              },
+            ]}
+          />
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Descrizione</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Utenti Reseller</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Tenant Assegnati</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrganizations.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    {organizations.length === 0
-                      ? 'Nessun ruolo reseller trovato'
-                      : 'Nessun ruolo reseller corrisponde ai filtri selezionati'}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Nome</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Descrizione</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Utenti Reseller</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Tenant Assegnati</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Azioni</th>
                 </tr>
-              ) : (
-                filteredOrganizations.map((org) => (
-                  <tr key={org.org_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 border-b font-medium">{org.name}</td>
-                    <td className="px-4 py-3 border-b text-gray-600">
-                      {org.description || 'Nessuna descrizione'}
-                    </td>
-                    <td className="px-4 py-3 border-b">
-                      <span className="badge bg-blue-100 text-blue-800">
-                        {org.users_count || 0} utenti
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 border-b">
-                      <span className="badge bg-green-100 text-green-800">
-                        {org.tenants_count || 0} tenant
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 border-b">
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => handleUsersClick(org)}
-                          className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
-                        >
-                          Gestisci Utenti
-                        </button>
-                        <button
-                          onClick={() => handleAssignTenantClick(org)}
-                          className="btn btn-small bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          Assegna Tenant
-                        </button>
-                        <button
-                          onClick={() => handleDelete(org)}
-                          className="btn btn-small btn-danger"
-                        >
-                          Elimina
-                        </button>
-                      </div>
+              </thead>
+              <tbody>
+                {filteredOrganizations.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      {organizations.length === 0
+                        ? 'Nessun ruolo reseller trovato'
+                        : 'Nessun ruolo reseller corrisponde ai filtri selezionati'}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredOrganizations.map((org) => (
+                    <tr key={org.org_id}>
+                      <td className="px-4 py-3 font-medium text-gray-800">{org.name}</td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {org.description || 'Nessuna descrizione'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="badge bg-[#eeeeee] text-[#286291]">
+                          {org.users_count || 0} utenti
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="badge bg-green-100 text-green-800">
+                          {org.tenants_count || 0} tenant
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleUsersClick(org)}
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                          >
+                            Gestisci Utenti
+                          </button>
+                          <button
+                            onClick={() => handleAssignTenantClick(org)}
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                          >
+                            Assegna Tenant
+                          </button>
+                          <button
+                            onClick={() => handleDelete(org)}
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                          >
+                            Elimina
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Reseller Users List */}
       <div className="card mt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-2xl font-semibold text-gray-800">Utenti Reseller</h3>
-        </div>
-
-        <div className="mb-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Cerca per nome o email..."
-              value={resellerSearchTerm}
-              onChange={(e) => setResellerSearchTerm(e.target.value)}
-              className="input w-full pl-10"
-            />
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              🔍
-            </span>
+        <div className="content-card">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-semibold text-gray-800">Utenti Reseller</h3>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Stato</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Tenant Assegnati</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredResellers.length === 0 ? (
+          <div className="mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cerca per nome o email..."
+                value={resellerSearchTerm}
+                onChange={(e) => setResellerSearchTerm(e.target.value)}
+                className="input w-full"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    {resellers.length === 0
-                      ? 'Nessun utente reseller trovato'
-                      : 'Nessun utente reseller corrisponde alla ricerca'}
-                  </td>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Nome</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Stato</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Tenant Assegnati</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-800">Azioni</th>
                 </tr>
-              ) : (
-                filteredResellers.map((reseller: Reseller) => {
-                  const isIndependent = !allAssociatedUserIds.has(reseller.user_id);
-                  const associatedOrg = isIndependent 
-                    ? null 
-                    : organizations.find((org) => (org.users || []).includes(reseller.user_id));
-                  return (
-                    <tr key={reseller.user_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 border-b font-medium">{reseller.name || 'N/A'}</td>
-                      <td className="px-4 py-3 border-b">{reseller.email}</td>
-                      <td className="px-4 py-3 border-b">
-                        {isIndependent ? (
-                          <span className="badge bg-purple-100 text-purple-800">
-                            Indipendente
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="badge bg-blue-100 text-blue-800">
-                              Associato
+              </thead>
+              <tbody>
+                {filteredResellers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      {resellers.length === 0
+                        ? 'Nessun utente reseller trovato'
+                        : 'Nessun utente reseller corrisponde alla ricerca'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredResellers.map((reseller: Reseller) => {
+                    const isIndependent = !allAssociatedUserIds.has(reseller.user_id);
+                    const associatedOrg = isIndependent 
+                      ? null 
+                      : organizations.find((org) => (org.users || []).includes(reseller.user_id));
+                    return (
+                      <tr key={reseller.user_id}>
+                        <td className="px-4 py-3 font-medium text-gray-800">{reseller.name || 'N/A'}</td>
+                        <td className="px-4 py-3 text-gray-800">{reseller.email}</td>
+                        <td className="px-4 py-3">
+                          {isIndependent ? (
+                            <span className="badge bg-[#eeeeee] text-[#113357]">
+                              Indipendente
                             </span>
-                            {associatedOrg && (
-                              <span className="text-sm text-gray-600">
-                                ({associatedOrg.name})
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="badge bg-[#eeeeee] text-[#286291]">
+                                Associato
                               </span>
+                              {associatedOrg && (
+                                <span className="text-sm text-gray-600">
+                                  ({associatedOrg.name})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="badge bg-green-100 text-green-800">
+                            {reseller.assigned_tenants_count || 0} tenant
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            {isIndependent && (
+                              <>
+                                <button
+                                  onClick={() => handleAssociateReseller(reseller)}
+                                  className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                                >
+                                  Associa
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReseller(reseller.user_id, reseller.email)}
+                                  className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                                >
+                                  Elimina
+                                </button>
+                              </>
                             )}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 border-b">
-                        <span className="badge bg-green-100 text-green-800">
-                          {reseller.assigned_tenants_count || 0} tenant
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border-b">
-                        <div className="flex gap-2">
-                          {isIndependent && (
-                            <>
-                              <button
-                                onClick={() => handleAssociateReseller(reseller)}
-                                className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
-                              >
-                                Associa
-                              </button>
-                              <button
-                                onClick={() => handleDeleteReseller(reseller.user_id, reseller.email)}
-                                className="btn btn-small btn-danger"
-                              >
-                                Elimina
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

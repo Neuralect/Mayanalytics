@@ -42,10 +42,10 @@ export default function UserDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Data</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Stato</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Insights</th>
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-white border-b">Data</th>
+                <th className="px-4 py-3 text-left font-semibold text-white border-b">Stato</th>
+                <th className="px-4 py-3 text-left font-semibold text-white border-b">Insights</th>
               </tr>
             </thead>
             <tbody>
@@ -63,7 +63,7 @@ export default function UserDashboard() {
                 </tr>
               ) : (
                 reports.map((report, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
+                  <tr key={idx}>
                     <td className="px-4 py-3 border-b text-gray-700">
                       {report.report_timestamp ? new Date(report.report_timestamp).toLocaleString('it-IT') : '-'}
                     </td>

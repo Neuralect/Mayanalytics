@@ -98,7 +98,7 @@ export default function ConnectorManagement({ userId, onUpdate }: Props) {
         <h4 className="text-lg font-semibold text-gray-800">Connettori XML</h4>
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
+          className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
         >
           + Aggiungi Connettore
         </button>

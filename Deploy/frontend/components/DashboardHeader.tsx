@@ -54,7 +54,7 @@ export default function DashboardHeader() {
           {selectedTenantId && currentTenant && (
             <div className="flex items-center gap-2">
               <span className="text-gray-400">→</span>
-              <span className="text-lg font-semibold text-purple-600">{currentTenant.name}</span>
+              <span className="text-lg font-semibold text-[#286291]">{currentTenant.name}</span>
             </div>
           )}
         </div>

@@ -74,7 +74,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
                 type="button"
                 onClick={onForgotPassword}
                 disabled={loading}
-                className="text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-sm text-[#286291] hover:text-[#113357] underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Password dimenticata?
               </button>

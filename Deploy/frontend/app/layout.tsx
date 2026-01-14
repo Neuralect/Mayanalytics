@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import Sidebar from "@/components/Sidebar";
+import UserProfileDropdown from "@/components/UserProfileDropdown";
 
 export const metadata: Metadata = {
   title: "Maya - Analytics Assistant",
@@ -15,7 +17,13 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <Sidebar />
+          <UserProfileDropdown />
+          <main className="min-h-screen sidebar-content">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

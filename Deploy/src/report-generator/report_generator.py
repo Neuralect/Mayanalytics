@@ -3070,15 +3070,15 @@ def generate_fallback_insights(data: Dict) -> str:
 
 # Setera brand colors (professional palette)
 SETERA_COLORS = {
-    'primary': '#1E3A8A',      # Deep blue
-    'secondary': '#3B82F6',    # Bright blue
+    'primary': '#113357',      # Primary dark blue
+    'secondary': '#286291',    # Primary medium blue
     'accent': '#10B981',       # Green
     'warning': '#F59E0B',      # Orange
     'danger': '#EF4444',       # Red
     'success': '#10B981',      # Green
-    'info': '#3B82F6',         # Blue
-    'light': '#F3F4F6',        # Light gray
-    'dark': '#1F2937',         # Dark gray
+    'info': '#286291',         # Medium blue
+    'light': '#eeeeee',        # Light gray
+    'dark': '#113357',         # Dark blue
     'background': '#FFFFFF',    # White
     'text': '#111827',          # Dark text
     'text_light': '#6B7280'     # Light text

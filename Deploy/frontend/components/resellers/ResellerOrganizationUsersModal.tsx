@@ -186,7 +186,7 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
 
         {loading ? (
           <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#286291]"></div>
             <p className="text-gray-600 mt-2">Caricamento...</p>
           </div>
         ) : users.length === 0 ? (
@@ -197,15 +197,15 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Nome</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Email</th>
+                  <th className="px-4 py-3 text-left font-semibold text-white border-b">Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user: Reseller) => (
-                  <tr key={user.user_id} className="hover:bg-gray-50">
+                  <tr key={user.user_id}>
                     <td className="px-4 py-3 border-b">{user.name || 'N/A'}</td>
                     <td className="px-4 py-3 border-b">{user.email}</td>
                     <td className="px-4 py-3 border-b">
@@ -246,15 +246,15 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Nome</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Email</th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-800 border-b">Azioni</th>
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-white border-b">Nome</th>
+                      <th className="px-4 py-3 text-left font-semibold text-white border-b">Email</th>
+                      <th className="px-4 py-3 text-left font-semibold text-white border-b">Azioni</th>
                     </tr>
                   </thead>
                   <tbody>
                     {unassociatedResellers.map((reseller: Reseller) => (
-                      <tr key={reseller.user_id} className="hover:bg-gray-50">
+                      <tr key={reseller.user_id}>
                         <td className="px-4 py-3 border-b">{reseller.name || 'N/A'}</td>
                         <td className="px-4 py-3 border-b">{reseller.email}</td>
                         <td className="px-4 py-3 border-b">
@@ -269,7 +269,7 @@ export default function ResellerOrganizationUsersModal({ organization, onClose, 
                                 setError(err.message || 'Errore nell\'aggiunta dell\'utente');
                               }
                             }}
-                            className="btn btn-small bg-blue-500 hover:bg-blue-600 text-white"
+                            className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
                           >
                             Aggiungi a questa org
                           </button>

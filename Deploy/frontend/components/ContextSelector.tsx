@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { tenantsApi, resellersApi } from '@/lib/api';
 import { Tenant } from '@/types';
+import { useRouter } from 'next/navigation';
 
 export default function ContextSelector() {
   const { user, setSelectedTenantId, setShowContextSelector } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     if (user) {
@@ -35,6 +37,7 @@ export default function ContextSelector() {
       sessionStorage.setItem('contextSelected', 'true');
     }
     setShowContextSelector(false);
+    router.push('/dashboard');
   };
 
   const handleSelectTenant = (tenantId: string) => {
@@ -44,6 +47,7 @@ export default function ContextSelector() {
       sessionStorage.setItem('contextSelected', 'true');
     }
     setShowContextSelector(false);
+    router.push('/dashboard');
   };
 
   if (!user || (user.role !== 'SuperAdmin' && user.role !== 'Reseller')) {
@@ -61,7 +65,7 @@ export default function ContextSelector() {
           <div className="space-y-4">
             <button
               onClick={handleSelectGlobal}
-              className="w-full p-6 text-left border-2 border-purple-500 rounded-lg hover:bg-purple-50 transition-colors"
+              className="w-full p-6 text-left border-2 border-[#286291] rounded-lg hover:bg-[#eeeeee] transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -72,7 +76,7 @@ export default function ContextSelector() {
                     Gestione globale: reseller, tenant e utenti
                   </p>
                 </div>
-                <div className="text-purple-600 text-2xl">→</div>
+                <div className="text-[#286291] text-2xl">→</div>
               </div>
             </button>
 
@@ -83,7 +87,7 @@ export default function ContextSelector() {
               
               {loading ? (
                 <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#286291]"></div>
                   <p className="text-gray-600 mt-2">Caricamento tenant...</p>
                 </div>
               ) : tenants.length === 0 ? (
@@ -96,7 +100,7 @@ export default function ContextSelector() {
                     <button
                       key={tenant.tenant_id}
                       onClick={() => handleSelectTenant(tenant.tenant_id)}
-                      className="w-full p-4 text-left border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-purple-500 transition-colors"
+                      className="w-full p-4 text-left border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-[#286291] transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -107,7 +111,7 @@ export default function ContextSelector() {
                             {tenant.tenant_id}
                           </p>
                         </div>
-                        <div className="text-purple-600">→</div>
+                        <div className="text-[#286291]">→</div>
                       </div>
                     </button>
                   ))}

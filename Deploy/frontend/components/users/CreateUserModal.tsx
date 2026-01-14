@@ -106,11 +106,11 @@ export default function CreateUserModal({ tenantId, onClose, onSuccess }: Props)
             </small>
           </div>
 
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 mb-2">
+          <div className="mb-6 p-4 bg-[#eeeeee] border border-[#286291] rounded-lg">
+            <p className="text-sm text-[#113357] mb-2">
               <strong>Nota:</strong> L'utente riceverà solo email automatiche. Non può accedere al sistema.
             </p>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-[#286291]">
               I connettori XML possono essere aggiunti dopo la creazione dell'utente.
             </p>
           </div>
