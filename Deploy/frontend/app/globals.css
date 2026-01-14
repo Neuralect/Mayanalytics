@@ -121,6 +121,19 @@ body {
     background-color: #113357 !important;
     background: #113357 !important;
   }
+
+  /* Force btn-primary in modals to use #286291 */
+  .fixed .btn-primary,
+  [class*="fixed"] .btn-primary {
+    background-color: #286291 !important;
+    background: #286291 !important;
+  }
+
+  .fixed .btn-primary:hover,
+  [class*="fixed"] .btn-primary:hover {
+    background-color: #113357 !important;
+    background: #113357 !important;
+  }
   
   .btn-small {
     @apply px-3 py-1.5 text-sm;
@@ -129,7 +142,7 @@ body {
   .card {
     @apply bg-[#286291] rounded-none shadow-xl mb-6 text-white;
     padding: 1.5rem;
-    padding-left: 18rem; /* 16rem sidebar + 2rem spazio */
+    padding-left: 20rem; /* 18rem sidebar + 2rem spazio */
   }
   
   /* Modal cards should not have left padding */
@@ -137,6 +150,46 @@ body {
   .fixed .card,
   [class*="fixed"] .card {
     padding-left: 1.5rem !important;
+    border-radius: 1rem !important; /* Rounded corners for modals */
+    background-color: #113357 !important; /* Darker blue gradient for modals */
+    color: white !important;
+  }
+
+  /* Force white text in modals */
+  .fixed .card h1,
+  .fixed .card h2,
+  .fixed .card h3,
+  .fixed .card h4,
+  .fixed .card h5,
+  .fixed .card h6,
+  .fixed .card p,
+  .fixed .card label,
+  .fixed .card span:not(.badge):not(.input-wrapper),
+  .fixed .card div:not(.input-wrapper):not(.bg-red-50):not(.bg-green-50):not(.bg-yellow-50),
+  [class*="fixed"] .card h1,
+  [class*="fixed"] .card h2,
+  [class*="fixed"] .card h3,
+  [class*="fixed"] .card h4,
+  [class*="fixed"] .card h5,
+  [class*="fixed"] .card h6,
+  [class*="fixed"] .card p,
+  [class*="fixed"] .card label,
+  [class*="fixed"] .card span:not(.badge):not(.input-wrapper),
+  [class*="fixed"] .card div:not(.input-wrapper):not(.bg-red-50):not(.bg-green-50):not(.bg-yellow-50) {
+    color: white !important;
+  }
+
+  /* Keep error messages with their original styling in modals */
+  .fixed .card .bg-red-50,
+  [class*="fixed"] .card .bg-red-50 {
+    @apply bg-red-50 text-red-700;
+  }
+
+  /* Modal backdrop with blur effect */
+  .modal-backdrop {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.3) !important;
   }
   
   /* Dashboard content wrapper with SVG background */
@@ -431,7 +484,7 @@ body {
 
 /* When sidebar is visible, add margin to content */
 body:has([data-sidebar-visible="true"]) .sidebar-content {
-  margin-left: 16rem;
+  margin-left: 18rem;
 }
 
 /* Dashboard content attached to sidebar */

@@ -61,12 +61,12 @@ export default function UserManagement({ users, tenantId, onRefresh }: Props) {
         <div className="content-card">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-2xl font-semibold text-gray-800">Gestione Utenti</h3>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
-            >
-              + Crea Nuovo Utente
-            </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn bg-[#286291] hover:bg-[#113357] text-white"
+          >
+            + Crea Nuovo Utente
+          </button>
           </div>
 
           <SearchAndFilter

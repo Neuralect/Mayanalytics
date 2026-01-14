@@ -242,12 +242,12 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-2xl font-semibold text-gray-800">Ruolo Reseller</h3>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowCreateOrgModal(true)}
-                className="btn btn-primary"
-              >
-                + Crea Ruolo Reseller
-              </button>
+            <button
+              onClick={() => setShowCreateOrgModal(true)}
+              className="btn bg-[#286291] hover:bg-[#113357] text-white"
+            >
+              + Crea Ruolo Reseller
+            </button>
               <button
                 onClick={() => setShowCreateUserModal(true)}
                 className="btn btn-secondary"
@@ -509,7 +509,7 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
       )}
 
       {showAssociateResellerModal && selectedReseller && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
           <div className="card max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-2xl font-semibold text-gray-800">
@@ -581,7 +581,7 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
                   }
                 }}
                 disabled={organizations.length === 0}
-                className="btn btn-primary"
+                className="btn bg-[#286291] hover:bg-[#113357] text-white"
               >
                 Associa
               </button>

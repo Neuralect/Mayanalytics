@@ -93,7 +93,7 @@ export default function SuperAdminManagement({ superadmins, onRefresh }: Props) 
             <h3 className="text-2xl font-semibold text-gray-800">Gestione SuperAdmin</h3>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn btn-primary"
+              className="btn bg-[#286291] hover:bg-[#113357] text-white"
             >
               + Crea Nuovo SuperAdmin
             </button>

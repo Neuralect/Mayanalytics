@@ -46,7 +46,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-[#113357] text-white flex flex-col z-50">
+    <div className="fixed left-0 top-0 h-full w-72 bg-[#113357] text-white flex flex-col z-50">
       {/* Logo Section */}
       <div className="p-6">
         <div className="relative">
