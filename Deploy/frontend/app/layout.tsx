@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   description: "Analytics Assistant per Setera Centralino",
   icons: {
     icon: [
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon.png', type: 'image/png', sizes: '16x16' },
       { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
-      { url: '/favicon.png', type: 'image/png', sizes: '16x16' },
     ],
     apple: [
-      { url: '/favicon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 };
