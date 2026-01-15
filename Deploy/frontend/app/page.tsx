@@ -4,14 +4,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/LoginForm';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import ForgotPasswordForm from '@/components/ForgotPasswordForm';
+import ResetPasswordForm from '@/components/ResetPasswordForm';
+import Dashboard from '@/components/Dashboard';
 import ContextSelector from '@/components/ContextSelector';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { CognitoUser } from 'amazon-cognito-identity-js';
+
+type PasswordResetState = 'login' | 'forgot-password' | 'reset-password';
 
 export default function Home() {
   const { user, loading, requiresPasswordChange, showContextSelector, setShowContextSelector } = useAuth();
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const router = useRouter();
+  const [passwordResetState, setPasswordResetState] = useState<PasswordResetState>('login');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCognitoUser, setResetCognitoUser] = useState<CognitoUser | null>(null);
 
   // Show context selector after login for SuperAdmin/Reseller if not already selected
   useEffect(() => {
@@ -21,16 +26,10 @@ export default function Home() {
         const contextSelected = typeof window !== 'undefined' ? sessionStorage.getItem('contextSelected') : null;
         if (!contextSelected) {
           setShowContextSelector(true);
-        } else {
-          // Redirect to dashboard if context already selected
-          router.push('/dashboard');
         }
-      } else if (user && !showContextSelector) {
-        // For other roles, redirect to dashboard
-        router.push('/dashboard');
       }
     }
-  }, [user, loading, requiresPasswordChange, showContextSelector, setShowContextSelector, router]);
+  }, [user, loading, requiresPasswordChange, showContextSelector, setShowContextSelector]);
 
   if (loading) {
     return (
@@ -48,28 +47,45 @@ export default function Home() {
   }
 
   if (!user) {
-    if (showForgotPassword) {
-      return <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />;
+    // Gestione reset password
+    if (passwordResetState === 'forgot-password') {
+      return (
+        <ForgotPasswordForm
+          onBack={() => setPasswordResetState('login')}
+          onCodeSent={(email, cognitoUser) => {
+            setResetEmail(email);
+            setResetCognitoUser(cognitoUser);
+            setPasswordResetState('reset-password');
+          }}
+        />
+      );
     }
-    return <LoginForm onForgotPassword={() => setShowForgotPassword(true)} />;
+
+    if (passwordResetState === 'reset-password' && resetCognitoUser) {
+      return (
+        <ResetPasswordForm
+          email={resetEmail}
+          cognitoUser={resetCognitoUser}
+          onBack={() => setPasswordResetState('forgot-password')}
+          onSuccess={() => {
+            setPasswordResetState('login');
+            setResetEmail('');
+            setResetCognitoUser(null);
+          }}
+        />
+      );
+    }
+
+    return (
+      <LoginForm
+        onForgotPassword={() => setPasswordResetState('forgot-password')}
+      />
+    );
   }
 
   if (showContextSelector && (user.role === 'SuperAdmin' || user.role === 'Reseller')) {
     return <ContextSelector />;
   }
 
-  // If user is logged in and context is selected, redirect to dashboard
-  if (user && !showContextSelector) {
-    router.push('/dashboard');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-          <p className="text-white">Reindirizzamento...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+  return <Dashboard />;
 }
