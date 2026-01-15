@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
 
 interface LoginFormProps {
-  onForgotPassword: () => void;
+  onForgotPassword?: () => void;
 }
 
 export default function LoginForm({ onForgotPassword }: LoginFormProps) {
@@ -42,14 +43,18 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#eeeeee]">
-      <div className="w-full max-w-md bg-[#286291] rounded-lg shadow-xl p-8">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-2xl p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-light text-white mb-2">Maya</h1>
-          <p className="text-white/90 text-sm leading-relaxed">
-            Analytics<br />
-            Assistant per<br />
-            Selera Centralino
-          </p>
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/images/logo.svg"
+              alt="Logo"
+              width={300}
+              height={300}
+              className="object-contain"
+              priority
+            />
+          </div>
         </div>
 
         {error && (
@@ -60,7 +65,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-white font-medium mb-2">Email</label>
+            <label className="block text-gray-800 font-medium mb-2">Email</label>
             <input
               type="email"
               value={email}
@@ -72,16 +77,18 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
           </div>
 
           <div className="mb-5">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-white font-medium">Password</label>
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                disabled={loading}
-                className="text-sm text-white/80 hover:text-white underline focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Password dimenticata?
-              </button>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-gray-800 font-medium">Password</label>
+              {onForgotPassword && (
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  className="text-sm text-[#286291] hover:text-[#113357] hover:underline"
+                  disabled={loading}
+                >
+                  Password dimenticata?
+                </button>
+              )}
             </div>
             <input
               type="password"
@@ -96,7 +103,7 @@ export default function LoginForm({ onForgotPassword }: LoginFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            className="w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>

@@ -51,7 +51,7 @@ export default function Sidebar() {
       <div className="p-6">
         <div className="relative">
           <img 
-            src="/images/logo.png" 
+            src="/images/logo.svg" 
             alt="SeteraAI VoiceNote" 
             className="w-full h-auto scale-125"
           />

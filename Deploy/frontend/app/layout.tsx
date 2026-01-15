@@ -7,6 +7,16 @@ import UserProfileDropdown from "@/components/UserProfileDropdown";
 export const metadata: Metadata = {
   title: "Maya - Analytics Assistant",
   description: "Analytics Assistant per Setera Centralino",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.png', type: 'image/png', sizes: '16x16' },
+    ],
+    apple: [
+      { url: '/favicon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

@@ -1,152 +1,73 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { CognitoUser } from 'amazon-cognito-identity-js';
+import { userPool } from '@/lib/cognito';
+import Image from 'next/image';
 
 interface ForgotPasswordFormProps {
   onBack: () => void;
+  onCodeSent: (email: string, cognitoUser: CognitoUser) => void;
 }
 
-export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
+export default function ForgotPasswordForm({ onBack, onCodeSent }: ForgotPasswordFormProps) {
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [step, setStep] = useState<'request' | 'confirm'>('request');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const { forgotPassword, confirmPassword } = useAuth();
 
-  const handleRequestReset = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setLoading(true);
 
     try {
-      await forgotPassword(email);
-      setSuccess('Codice di verifica inviato alla tua email. Controlla la posta e inserisci il codice ricevuto.');
-      setStep('confirm');
+      const userData = {
+        Username: email,
+        Pool: userPool,
+      };
+      const cognitoUser = new CognitoUser(userData);
+
+      cognitoUser.forgotPassword({
+        onSuccess: (data) => {
+          // Codice inviato con successo
+          onCodeSent(email, cognitoUser);
+        },
+        onFailure: (err: any) => {
+          let errorMessage = 'Errore durante la richiesta di reset password';
+          
+          if (err.code === 'UserNotFoundException') {
+            errorMessage = 'Utente non trovato';
+          } else if (err.code === 'LimitExceededException') {
+            errorMessage = 'Troppi tentativi. Riprova più tardi';
+          } else if (err.message) {
+            errorMessage = err.message;
+          }
+          
+          setError(errorMessage);
+          setLoading(false);
+        },
+      });
     } catch (err: any) {
-      let errorMessage = 'Errore durante la richiesta di reset password';
-      
-      if (err.code === 'UserNotFoundException') {
-        errorMessage = 'Utente non trovato';
-      } else if (err.code === 'LimitExceededException') {
-        errorMessage = 'Troppi tentativi. Riprova più tardi';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-    } finally {
+      setError(err.message || 'Errore durante la richiesta di reset password');
       setLoading(false);
     }
   };
-
-  const handleConfirmReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (newPassword !== confirmNewPassword) {
-      setError('Le password non corrispondono');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setError('La password deve essere di almeno 8 caratteri');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await confirmPassword(email, code, newPassword);
-      setSuccess('Password reimpostata con successo! Ora puoi effettuare il login.');
-      setTimeout(() => {
-        onBack();
-      }, 2000);
-    } catch (err: any) {
-      let errorMessage = 'Errore durante il reset password';
-      
-      if (err.code === 'CodeMismatchException') {
-        errorMessage = 'Codice di verifica non valido';
-      } else if (err.code === 'ExpiredCodeException') {
-        errorMessage = 'Codice di verifica scaduto. Richiedi un nuovo codice';
-      } else if (err.code === 'InvalidPasswordException') {
-        errorMessage = 'Password non valida. Deve contenere almeno 8 caratteri, una maiuscola e un numero';
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (step === 'request') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="card w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-light text-gray-800 mb-2">🤖 Maya</h1>
-            <p className="text-gray-600">Password Dimenticata</p>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleRequestReset}>
-            <div className="mb-5">
-              <label className="block text-gray-700 font-medium mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="input"
-                disabled={loading}
-                placeholder="Inserisci la tua email"
-              />
-              <small className="text-gray-500 text-sm mt-1 block">
-                Ti invieremo un codice di verifica per reimpostare la password
-              </small>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary w-full mb-3"
-            >
-              {loading ? 'Invio in corso...' : 'Invia codice di verifica'}
-            </button>
-
-            <button
-              type="button"
-              onClick={onBack}
-              disabled={loading}
-              className="btn btn-secondary w-full"
-            >
-              Torna al login
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="card w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eeeeee]">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-2xl p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-light text-gray-800 mb-2">🤖 Maya</h1>
-          <p className="text-gray-600">Reimposta Password</p>
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/images/logo.svg"
+              alt="Logo"
+              width={300}
+              height={300}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h2 className="text-2xl font-light text-gray-800">Password Dimenticata</h2>
         </div>
 
         {error && (
@@ -155,84 +76,54 @@ export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) 
           </div>
         )}
 
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={handleConfirmReset}>
+        <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Codice di verifica</label>
+            <label className="block text-gray-800 font-medium mb-2">
+              Email
+            </label>
             <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              className="input"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#113357] transition-colors bg-white text-gray-800"
               disabled={loading}
-              placeholder="Inserisci il codice ricevuto via email"
-              maxLength={6}
+              placeholder="nome@esempio.com"
             />
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Nuova Password</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              className="input"
-              disabled={loading}
-              placeholder="Inserisci la nuova password"
-            />
-            <small className="text-gray-500 text-sm mt-1 block">
-              Minimo 8 caratteri, almeno una maiuscola e un numero
+            <small className="text-gray-600 text-sm mt-2 block">
+              Ti invieremo un codice di verifica per reimpostare la password
             </small>
           </div>
 
-          <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Conferma Password</label>
-            <input
-              type="password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              required
-              minLength={8}
-              className="input"
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onBack}
               disabled={loading}
-              placeholder="Conferma la nuova password"
-            />
+              className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-[#286291] text-white hover:bg-[#113357] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Torna al login
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Invio in corso...' : 'Invia codice di verifica'}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full mb-3"
-          >
-            {loading ? 'Reimpostazione in corso...' : 'Reimposta Password'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStep('request');
-              setCode('');
-              setNewPassword('');
-              setConfirmNewPassword('');
-              setError('');
-              setSuccess('');
-            }}
-            disabled={loading}
-            className="btn btn-secondary w-full"
-          >
-            Richiedi nuovo codice
-          </button>
         </form>
       </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
 
