@@ -141,8 +141,24 @@ body {
   
   .card {
     @apply bg-[#286291] rounded-none shadow-xl mb-6 text-white;
-    padding: 1.5rem;
-    padding-left: 20rem; /* 18rem sidebar + 2rem spazio */
+    padding: 1rem; /* Smaller padding for mobile */
+    padding-left: 1rem;
+  }
+  
+  /* Small phones: even smaller padding */
+  @media (max-width: 480px) {
+    .card {
+      padding: 0.75rem;
+      padding-left: 0.75rem;
+    }
+  }
+  
+  /* Desktop: add left padding for sidebar */
+  @media (min-width: 1024px) {
+    .card {
+      padding: 1.5rem;
+      padding-left: 20rem; /* 18rem sidebar + 2rem spazio */
+    }
   }
   
   /* Modal cards should not have left padding */
@@ -480,11 +496,36 @@ body {
 .sidebar-content {
   margin-left: 0;
   transition: margin-left 0.3s ease;
+  padding: 0.75rem; /* Smaller padding for mobile */
 }
 
-/* When sidebar is visible, add margin to content */
-body:has([data-sidebar-visible="true"]) .sidebar-content {
-  margin-left: 18rem;
+/* Small phones: minimal padding */
+@media (max-width: 480px) {
+  .sidebar-content {
+    padding: 0.5rem;
+  }
+}
+
+/* Mobile: add top padding for hamburger menu and user dropdown */
+@media (max-width: 1023px) {
+  .sidebar-content {
+    padding-top: 4.5rem; /* Space for hamburger menu and user dropdown */
+  }
+  
+  /* Extra small phones: less top padding */
+  @media (max-width: 480px) {
+    .sidebar-content {
+      padding-top: 4rem;
+    }
+  }
+}
+
+/* When sidebar is visible, add margin to content - Desktop only */
+@media (min-width: 1024px) {
+  body:has([data-sidebar-visible="true"]) .sidebar-content {
+    margin-left: 18rem;
+    padding: 0; /* Remove padding on desktop */
+  }
 }
 
 /* Dashboard content attached to sidebar */

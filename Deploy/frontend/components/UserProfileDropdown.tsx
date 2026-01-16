@@ -75,9 +75,9 @@ export default function UserProfileDropdown() {
   const isSuperAdmin = user.role === 'SuperAdmin';
 
   return (
-    <div className="fixed top-12 right-8 z-50 flex items-center gap-3" ref={dropdownRef}>
-      {/* Search bar */}
-      <div className="relative flex items-center h-12 w-[200px]">
+    <div className="fixed top-3 right-3 sm:top-4 sm:right-4 lg:top-12 lg:right-8 z-50 flex items-center gap-2 lg:gap-3" ref={dropdownRef}>
+      {/* Search bar - Hidden on mobile */}
+      <div className="hidden md:flex relative items-center h-12 w-[200px]">
         <input
           type="text"
           className="w-full h-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 transition-all shadow-[0_0_8px_rgba(99,102,241,0.15),0_0_16px_rgba(99,102,241,0.1)] focus:outline-none focus:border-[#0881aa] focus:shadow-[0_0_12px_rgba(99,102,241,0.25),0_0_24px_rgba(99,102,241,0.15),0_0_0_3px_rgba(8,129,170,0.1)] placeholder:text-gray-400"
@@ -122,7 +122,7 @@ export default function UserProfileDropdown() {
         </div>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+          <div className="absolute right-0 lg:right-0 mt-2 w-64 max-w-[calc(100vw-0.75rem)] sm:max-w-[calc(100vw-1rem)] bg-white rounded-lg shadow-xl border border-gray-200 z-50">
           <div className="p-4 border-b border-gray-200">
             <div className="font-semibold text-gray-800">{user.name || 'User'}</div>
             <div className="text-sm text-gray-600 mt-1">{user.email}</div>

@@ -116,12 +116,12 @@ export default function TenantManagement({ tenants, onRefresh, canCreate }: Prop
     <>
       <div className="card">
         <div className="content-card">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-semibold text-gray-800">Gestione Tenant</h3>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h3 className="text-xl sm:text-2xl font-semibold text-gray-800">Gestione Tenant</h3>
             {canCreate && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn bg-[#286291] hover:bg-[#113357] text-white"
+              className="btn bg-[#286291] hover:bg-[#113357] text-white w-full sm:w-auto text-sm sm:text-base whitespace-nowrap"
             >
               + Crea Nuovo Tenant
             </button>

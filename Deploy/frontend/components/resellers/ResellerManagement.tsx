@@ -239,18 +239,18 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
     <>
       <div className="card">
         <div className="content-card">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-semibold text-gray-800">Ruolo Reseller</h3>
-            <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h3 className="text-xl sm:text-2xl font-semibold text-gray-800">Ruolo Reseller</h3>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <button
               onClick={() => setShowCreateOrgModal(true)}
-              className="btn bg-[#286291] hover:bg-[#113357] text-white"
+              className="btn bg-[#286291] hover:bg-[#113357] text-white w-full sm:w-auto text-sm sm:text-base whitespace-nowrap"
             >
               + Crea Ruolo Reseller
             </button>
               <button
                 onClick={() => setShowCreateUserModal(true)}
-                className="btn btn-secondary"
+                className="btn btn-secondary w-full sm:w-auto text-sm sm:text-base whitespace-nowrap"
               >
                 + Crea Utente Reseller
               </button>
