@@ -18,6 +18,16 @@ export default function Home() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetCognitoUser, setResetCognitoUser] = useState<CognitoUser | null>(null);
 
+  // Reset password reset state when user logs out
+  useEffect(() => {
+    if (!user && !loading) {
+      // Reset password reset state when user logs out
+      setPasswordResetState('login');
+      setResetEmail('');
+      setResetCognitoUser(null);
+    }
+  }, [user, loading]);
+
   // Show context selector after login for SuperAdmin/Reseller if not already selected
   useEffect(() => {
     if (user && !loading && !requiresPasswordChange) {

@@ -178,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRequiresPasswordChange(false);
     setSelectedTenantIdState(null);
     setShowContextSelector(false);
+    setLoading(false);
   };
 
   const refreshUser = async () => {

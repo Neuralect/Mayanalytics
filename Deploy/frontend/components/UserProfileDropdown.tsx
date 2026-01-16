@@ -2,13 +2,14 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { tenantsApi } from '@/lib/api';
 import { Tenant } from '@/types';
 
 export default function UserProfileDropdown() {
   const { user, logout, selectedTenantId, setSelectedTenantId } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -148,6 +149,7 @@ export default function UserProfileDropdown() {
               onClick={() => {
                 logout();
                 setIsOpen(false);
+                router.push('/');
               }}
               className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors mt-1"
             >
