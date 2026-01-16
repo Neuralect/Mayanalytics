@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
 
 export default function ChangePasswordForm() {
   const [newPassword, setNewPassword] = useState('');
@@ -24,11 +25,19 @@ export default function ChangePasswordForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="card w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eeeeee]">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-2xl p-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-light text-gray-800 mb-2">🤖 Maya</h1>
-          <p className="text-gray-600">Cambio Password Obbligatorio</p>
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/images/logo.svg"
+              alt="Logo"
+              width={300}
+              height={300}
+              className="object-contain"
+              priority
+            />
+          </div>
         </div>
 
         {error && (
@@ -39,14 +48,14 @@ export default function ChangePasswordForm() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-gray-700 font-medium mb-2">Nuova Password</label>
+            <label className="block text-gray-800 font-medium mb-2">Nuova Password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={8}
-              className="input"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-[#113357] transition-colors bg-white text-gray-800"
               disabled={loading}
             />
             <small className="text-gray-500 text-sm mt-1 block">
@@ -57,7 +66,7 @@ export default function ChangePasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-full"
+            className="w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-[#113357] to-[#286291] text-white hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Cambio password...' : 'Cambia Password'}
           </button>
