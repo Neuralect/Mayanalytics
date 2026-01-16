@@ -436,21 +436,19 @@ export default function ResellerManagement({ resellers: propResellers, tenants, 
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             {isIndependent && (
-                              <>
-                                <button
-                                  onClick={() => handleAssociateReseller(reseller)}
-                                  className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
-                                >
-                                  Associa
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteReseller(reseller.user_id, reseller.email)}
-                                  className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
-                                >
-                                  Elimina
-                                </button>
-                              </>
+                              <button
+                                onClick={() => handleAssociateReseller(reseller)}
+                                className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                              >
+                                Associa
+                              </button>
                             )}
+                            <button
+                              onClick={() => handleDeleteReseller(reseller.user_id, reseller.email)}
+                              className="btn btn-small bg-[#286291] hover:bg-[#113357] text-white"
+                            >
+                              Elimina
+                            </button>
                           </div>
                         </td>
                       </tr>
