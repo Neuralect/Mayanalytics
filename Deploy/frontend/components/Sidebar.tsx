@@ -32,8 +32,8 @@ export default function Sidebar() {
   // If in tenant context, show only Dashboard
   // Otherwise show all menu items for SuperAdmin/Reseller
   const allMenuItems = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/reseller', label: 'Reseller' },
+    ...(user?.role === 'SuperAdmin' ? [{ path: '/dashboard', label: 'Dashboard' }] : []),
+    ...(user?.role === 'SuperAdmin' ? [{ path: '/reseller', label: 'Reseller' }] : []),
     { path: '/tenants', label: 'Tenants' },
     { path: '/statistiche', label: 'Statistiche' },
     { path: '/impostazioni', label: 'Impostazioni' },

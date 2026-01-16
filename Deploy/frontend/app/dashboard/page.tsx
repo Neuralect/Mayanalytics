@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { tenantsApi, superadminsApi } from '@/lib/api';
 import { Tenant, SuperAdmin } from '@/types';
 import SuperAdminManagement from '@/components/superadmins/SuperAdminManagement';
@@ -9,12 +10,20 @@ import AdminDashboard from '@/components/dashboards/AdminDashboard';
 
 export default function DashboardPage() {
   const { user, selectedTenantId, setSelectedTenantId } = useAuth();
+  const router = useRouter();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [superadmins, setSuperadmins] = useState<SuperAdmin[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Redirect resellers to tenants page (they don't need dashboard)
   useEffect(() => {
-    if (user?.role === 'SuperAdmin' || user?.role === 'Reseller') {
+    if (user?.role === 'Reseller') {
+      router.replace('/tenants');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    if (user?.role === 'SuperAdmin') {
       // Only load data if no tenant is selected (global view)
       if (!selectedTenantId) {
         loadData();
@@ -45,7 +54,7 @@ export default function DashboardPage() {
   };
 
   // If a tenant is selected, show AdminDashboard in tenant context
-  if (selectedTenantId && (user?.role === 'SuperAdmin' || user?.role === 'Reseller')) {
+  if (selectedTenantId && user?.role === 'SuperAdmin') {
     return (
       <div className="dashboard-content min-h-screen">
         <div>
@@ -53,6 +62,11 @@ export default function DashboardPage() {
         </div>
       </div>
     );
+  }
+
+  // Don't render dashboard for resellers (they're being redirected)
+  if (user?.role === 'Reseller') {
+    return null;
   }
 
   if (loading) {
@@ -68,7 +82,6 @@ export default function DashboardPage() {
 
   // For SuperAdmin: show SuperAdminManagement
   // For Admin: show AdminDashboard
-  // For Reseller: show nothing (they should use tenants page)
   return (
     <div className="dashboard-content min-h-screen">
       <div>
